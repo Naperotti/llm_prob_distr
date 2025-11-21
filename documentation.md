@@ -2,6 +2,33 @@
 
 **Active Session**
 
+
+- **Session ID:** 2
+- **Date:** 2025-11-21T00:00:00Z
+- **Short summary:** User clarified their canonical way to start the program; documentation and decisions updated to reflect this method.
+- **What we did (accomplishments):**
+  - Recorded user's preferred startup method (using `sh web.sh` from the project root in Git Bash or PowerShell) as the canonical way to run the backend.
+  - Updated documentation and decisions per instructions.
+- **User struggles / constraints:**
+  - User wants the assistant to strictly follow instructions and record the canonical startup method.
+- **Decisions made:**
+  - Canonical way to start the program is: navigate to the project directory and run `sh web.sh` (which starts Uvicorn with FastAPI backend).
+- **Outstanding tasks / next steps:**
+  - Ensure all future documentation and onboarding instructions reflect this startup method.
+- **Relevant files changed:**
+  - `documentation.md` (this file)
+  - `decisions.md` (canonical startup method)
+- **Files changed since last update:**
+  - `documentation.md`
+  - `decisions.md`
+- **Notes for next time:**
+  - Always use `sh web.sh` as the default backend startup command in docs and onboarding.
+- **Last updated:** 2025-11-21T00:00:00Z
+
+---
+
+# Past Sessions
+
 - **Session ID:** 1
 - **Date:** 2025-11-20T00:00:00Z
 - **Short summary:** Created `instructions.md` and this initial `documentation.md` entry to enable persistent session documentation across VS Code restarts.
@@ -33,11 +60,4 @@
 - **Notes for next time:**
   - When the user provides more project details in a future prompt, update the "What we did" and "Outstanding tasks" fields accordingly.
 - **Last updated:** 2025-11-20T15:13:00Z
-- **Decisions file:** `decisions.md` (created)
-- **Last updated:** 2025-11-20T15:13:00Z
 
----
-
-# Past Sessions
-
-*(none yet)*

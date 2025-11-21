@@ -24,6 +24,19 @@ Format (template for each decision)
 
 # Example decision
 
+- Decision ID: D002
+- Date: 2025-11-21T00:00:00Z
+- Title: Canonical backend startup method
+- Decision: Always start the backend by running `sh web.sh` from the project root (Git Bash or PowerShell).
+- Rationale:
+  - Ensures consistent, reproducible startup for all users and environments.
+  - Avoids confusion with multiple Python/venv/conda activation commands.
+  - Matches user’s explicit instructions and onboarding expectations.
+- Affected components/files: `README.md`, `documentation.md`, onboarding docs
+- Status: accepted
+- Related session(s): 2
+- Last updated: 2025-11-21T00:00:00Z
+
 - Decision ID: D001
 - Date: 2025-11-20T15:20:00Z
 - Title: Default local transformer model for development
