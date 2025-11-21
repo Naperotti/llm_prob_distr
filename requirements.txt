@@ -1,6 +1,11 @@
-# python==3.12.8        # optional hint; pip ignores this but documents it
+python==3.12.8        # optional hint; pip ignores this but documents it
 torch==2.9.0
 transformers==4.57.1
 tokenizers==0.22.1
 numpy==2.3.3
 pandas==2.3.3
+
+# App server and API dependencies
+fastapi==0.100.0
+uvicorn[standard]==0.22.0
+pydantic==1.10.11

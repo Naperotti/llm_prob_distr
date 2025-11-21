@@ -26,6 +26,8 @@ sensitive_files: [".env", "secrets.json"]
 - Branch: `main`
 - Run tests: `no` (ask before running)
 - Always ask before: pushing commits, changing major deps, or deleting files
+- Path to directory is: '/c/Users/naper/OneDrive/Dokument/GitHub/llm_prob_distr'
+
 
 ## Preferences
 - Code style: keep existing style; prefer small, clear changes
@@ -46,4 +48,14 @@ sensitive_files: [".env", "secrets.json"]
 - "Please fix `app.py` so startup doesn't crash on missing token."
 - "Add an endpoint `/health` returning 200 and JSON `{'ok':true}`."
 - Inspect files I mention
+
+## Mandatory context files
+- The assistant MUST load and use the following files as context for every prompt, before taking action or making recommendations:
+	- `decisions.md`: load the entire file and treat entries as the canonical, long-lived project decisions and goals.
+	- `instructions.md`: load and follow the rules and templates contained in this file (session rules, formatting, and privacy constraints).
+	- `documentation.md`: include session context from this file for every prompt (by default the assistant uses the most recent session blocks; see `instructions.md` for retention rules). If the user requests broader context, the assistant may load older session blocks as instructed.
+
+- These three files are treated as authoritative context. The assistant should parse them at the start of every prompt-handling run and use their content to influence behavior, suggestions, and edits.
+
+- Safety: never extract or write secrets from these files into other documents. If any of these files contain sensitive data, redact and warn the user.
 
