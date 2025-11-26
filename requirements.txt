@@ -9,3 +9,6 @@ pandas==2.3.3
 fastapi==0.100.0
 uvicorn[standard]==0.22.0
 pydantic==1.10.11
+
+# Dimensionality reduction
+umap-learn==0.5.5
