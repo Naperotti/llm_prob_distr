@@ -2,28 +2,72 @@
 
 **Active Session**
 
-
-- **Session ID:** 2
-- **Date:** 2025-11-21T00:00:00Z
-- **Short summary:** User clarified their canonical way to start the program; documentation and decisions updated to reflect this method.
+- **Session ID:** 3
+- **Date:** 2025-11-26T18:00:00Z
+- **Short summary:** Implemented branching visualization with semantic similarity analysis (UMAP), increased sequence limit to 500, added server restart functionality, and created Colab deployment notebook.
 - **What we did (accomplishments):**
-  - Recorded user's preferred startup method (using `sh web.sh` from the project root in Git Bash or PowerShell) as the canonical way to run the backend.
-  - Updated documentation and decisions per instructions.
+  - **Branching visualization**: Created `/sample_n_sequences` endpoint that generates N parallel sequences from same prompt, visualizes divergence points in column-grid layout, and displays connecting lines showing where sequences branch from first sequence
+  - **Semantic similarity**: Added UMAP dimensionality reduction using GPT-2's own embeddings (last token hidden state) to create 2D scatter plot showing semantic clustering of sequences
+  - **Configurable UMAP**: Exposed n_neighbors (2-50), min_dist (0-1), and spread (0.1-3) parameters in frontend with purple-bordered controls
+  - **Interactive features**: Hover tooltips on branch tokens show probability distributions, total sequence probability displayed with calculation details, UMAP points clickable to show sequence text
+  - **Comprehensive tooltips**: Added detailed explanations to all hyperparameters (top-k, top-p, temperature, min-p, UMAP params)
+  - **Increased limits**: Raised sequence limit from 100 to 500 to enable large-scale branching analysis
+  - **Server restart**: Enhanced `web.sh` with `restart_server()` function - run `bash web.sh restart` for one-step restart
+  - **Colab deployment**: Created `colab_setup.ipynb` notebook that clones repo, installs dependencies, creates ngrok tunnel, auto-configures HTML, and provides GPU acceleration
+  - **Code committed and pushed**: All changes committed to `first-branch` and pushed to GitHub
 - **User struggles / constraints:**
-  - User wants the assistant to strictly follow instructions and record the canonical startup method.
+  - Hit HTTP 422 validation error when trying N=150 (limit was 100)
+  - Wanted simpler server restart without manual stop-start
+  - Needs GPU acceleration for large N (150-500 sequences)
+  - Initially confused about ngrok (what it is and why needed)
 - **Decisions made:**
-  - Canonical way to start the program is: navigate to the project directory and run `sh web.sh` (which starts Uvicorn with FastAPI backend).
+  - Use GPT-2's internal representations instead of external embedding model (Decision D003)
+  - Support up to 500 sequences (Decision D004)
+  - Deploy to Google Colab with ngrok tunneling (Decision D005)
+  - Branch visualization: always compare to first sequence (seq 0), not parent
+  - UMAP parameters: default n_neighbors=5, min_dist=0.0, spread=0.5 for tight clustering
+  - Total probability: multiply all token probabilities, display as exponential notation
 - **Outstanding tasks / next steps:**
-  - Ensure all future documentation and onboarding instructions reflect this startup method.
+  - **NEXT SESSION START HERE**: Test Colab deployment using `colab_setup.ipynb`
+    1. Upload notebook to Google Colab
+    2. Enable GPU (Runtime → Change runtime type → GPU)
+    3. Run all cells
+    4. Download `index_colab.html` and open in browser
+    5. Test generating 150-500 sequences with GPU acceleration
+  - Optional: Experiment with UMAP parameters for optimal clustering visualization
+  - Optional: Consider Kaggle deployment as alternative to Colab
+  - Optional: Add progress indicators for long-running sequence generation
 - **Relevant files changed:**
-  - `documentation.md` (this file)
-  - `decisions.md` (canonical startup method)
+  - `app.py`: added `/sample_n_sequences` endpoint with UMAP, increased n limit to 500
+  - `index.html`: added branching section, UMAP section, comprehensive tooltips, increased max to 500
+  - `web.sh`: added `restart_server()` function for one-step restart
+  - `requirements.txt`: added `umap-learn==0.5.5`
+  - `colab_setup.ipynb`: new ready-to-run Colab notebook
+  - `decisions.md`: added D003 (branching viz), D004 (limits/restart), D005 (Colab deployment)
+  - `documentation.md`: this session update
 - **Files changed since last update:**
-  - `documentation.md`
-  - `decisions.md`
+  - `app.py` (full branching + UMAP implementation)
+  - `index.html` (full UI with branching grid, UMAP scatter, tooltips)
+  - `web.sh` (restart function)
+  - `requirements.txt` (umap-learn)
+  - `colab_setup.ipynb` (new)
+  - `decisions.md` (3 new decisions)
+  - `documentation.md` (this update)
+- **Technical details:**
+  - Sampling logic: INTERSECTION semantics (top-k ∩ top-p, then min_p filter, fallback to top-1)
+  - Embedding extraction: `out.hidden_states[-1][0, -1, :].cpu().numpy()` (last layer, last token, 768-dim)
+  - UMAP: cosine metric, user-configurable parameters sent from frontend to backend
+  - Branch counting: sum of (unique_tokens - 1) at each position
+  - Visualization: column-based grid (60px cells), empty cells before branch point, vertical lines connecting to seq 0
+  - Probability display: `P = ∏(token_probs)`, shown as exponential notation with hover tooltip showing full calculation
 - **Notes for next time:**
-  - Always use `sh web.sh` as the default backend startup command in docs and onboarding.
-- **Last updated:** 2025-11-21T00:00:00Z
+  - User is taking a break; next session should start with Colab deployment testing
+  - User wants to learn every line of code written (per copilot-instructions.md)
+  - For Colab: ngrok creates public tunnel (https://xxxx.ngrok-free.app) that forwards to localhost:8000
+  - Free ngrok tier: ~2 hour sessions, get free auth token at ngrok.com for longer sessions
+  - Kaggle alternative: no ngrok needed but more complex setup
+  - User confirmed all changes committed and pushed to GitHub
+- **Last updated:** 2025-11-26T21:30:00Z
 
 ---
 
