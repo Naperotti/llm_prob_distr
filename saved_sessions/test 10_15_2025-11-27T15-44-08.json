@@ -1,0 +1,979 @@
+{
+  "name": "test 10/15",
+  "timestamp": "2025-11-27T15:44:08.975794",
+  "model": "gpt2",
+  "prompt": "Something happens",
+  "params": {
+    "n": 10,
+    "max_length": 15,
+    "k": 10,
+    "temperature": 0.5,
+    "top_p": 1,
+    "min_p": 0,
+    "umap_n_neighbors": 5,
+    "umap_min_dist": 0,
+    "umap_spread": 0.5
+  },
+  "sequences": [
+    {
+      "id": 0,
+      "tokens": [
+        {
+          "token_id": 618,
+          "token": " when",
+          "prob": 0.7842368483543396,
+          "logprob": -0.2430441975593567
+        },
+        {
+          "token_id": 345,
+          "token": " you",
+          "prob": 0.8792757391929626,
+          "logprob": -0.12865673005580902
+        },
+        {
+          "token_id": 821,
+          "token": "'re",
+          "prob": 0.47640618681907654,
+          "logprob": -0.7414844632148743
+        },
+        {
+          "token_id": 257,
+          "token": " a",
+          "prob": 0.28568753600120544,
+          "logprob": -1.2528566122055054
+        },
+        {
+          "token_id": 5141,
+          "token": " kid",
+          "prob": 0.5383599400520325,
+          "logprob": -0.6192278861999512
+        },
+        {
+          "token_id": 11,
+          "token": ",",
+          "prob": 0.334606409072876,
+          "logprob": -1.094800353050232
+        },
+        {
+          "token_id": 290,
+          "token": " and",
+          "prob": 0.4736800193786621,
+          "logprob": -0.7472232580184937
+        },
+        {
+          "token_id": 345,
+          "token": " you",
+          "prob": 0.9242302775382996,
+          "logprob": -0.07879401743412018
+        },
+        {
+          "token_id": 821,
+          "token": "'re",
+          "prob": 0.8797482252120972,
+          "logprob": -0.12811951339244843
+        },
+        {
+          "token_id": 257,
+          "token": " a",
+          "prob": 0.33575624227523804,
+          "logprob": -1.091369867324829
+        },
+        {
+          "token_id": 5141,
+          "token": " kid",
+          "prob": 0.8051950335502625,
+          "logprob": -0.21667075157165527
+        },
+        {
+          "token_id": 11,
+          "token": ",",
+          "prob": 0.20021946728229523,
+          "logprob": -1.6083412170410156
+        },
+        {
+          "token_id": 290,
+          "token": " and",
+          "prob": 0.744955837726593,
+          "logprob": -0.29443034529685974
+        },
+        {
+          "token_id": 345,
+          "token": " you",
+          "prob": 0.9836942553520203,
+          "logprob": -0.016440145671367645
+        },
+        {
+          "token_id": 821,
+          "token": "'re",
+          "prob": 0.9520539045333862,
+          "logprob": -0.049133624881505966
+        }
+      ],
+      "full_text": "Something happens when you're a kid, and you're a kid, and you're"
+    },
+    {
+      "id": 1,
+      "tokens": [
+        {
+          "token_id": 284,
+          "token": " to",
+          "prob": 0.10745156556367874,
+          "logprob": -2.230715036392212
+        },
+        {
+          "token_id": 502,
+          "token": " me",
+          "prob": 0.12454188615083694,
+          "logprob": -2.083113193511963
+        },
+        {
+          "token_id": 618,
+          "token": " when",
+          "prob": 0.536253809928894,
+          "logprob": -0.62314772605896
+        },
+        {
+          "token_id": 314,
+          "token": " I",
+          "prob": 0.978615403175354,
+          "logprob": -0.021616559475660324
+        },
+        {
+          "token_id": 1101,
+          "token": "'m",
+          "prob": 0.7734883427619934,
+          "logprob": -0.2568446695804596
+        },
+        {
+          "token_id": 287,
+          "token": " in",
+          "prob": 0.5230092406272888,
+          "logprob": -0.6481561660766602
+        },
+        {
+          "token_id": 257,
+          "token": " a",
+          "prob": 0.5718637704849243,
+          "logprob": -0.5588544607162476
+        },
+        {
+          "token_id": 2776,
+          "token": " relationship",
+          "prob": 0.17557770013809204,
+          "logprob": -1.7396736145019531
+        },
+        {
+          "token_id": 810,
+          "token": " where",
+          "prob": 0.044854048639535904,
+          "logprob": -3.104341506958008
+        },
+        {
+          "token_id": 314,
+          "token": " I",
+          "prob": 0.9556440114974976,
+          "logprob": -0.04536980763077736
+        },
+        {
+          "token_id": 1101,
+          "token": "'m",
+          "prob": 0.8518714308738708,
+          "logprob": -0.16031967103481293
+        },
+        {
+          "token_id": 2111,
+          "token": " trying",
+          "prob": 0.05026954039931297,
+          "logprob": -2.990355968475342
+        },
+        {
+          "token_id": 284,
+          "token": " to",
+          "prob": 0.9998445510864258,
+          "logprob": -0.0001554609916638583
+        },
+        {
+          "token_id": 651,
+          "token": " get",
+          "prob": 0.2857627868652344,
+          "logprob": -1.2525932788848877
+        },
+        {
+          "token_id": 257,
+          "token": " a",
+          "prob": 0.31127557158470154,
+          "logprob": -1.1670767068862915
+        }
+      ],
+      "full_text": "Something happens to me when I'm in a relationship where I'm trying to get a"
+    },
+    {
+      "id": 2,
+      "tokens": [
+        {
+          "token_id": 284,
+          "token": " to",
+          "prob": 0.10745156556367874,
+          "logprob": -2.230715036392212
+        },
+        {
+          "token_id": 514,
+          "token": " us",
+          "prob": 0.025740310549736023,
+          "logprob": -3.6596970558166504
+        },
+        {
+          "token_id": 618,
+          "token": " when",
+          "prob": 0.46866416931152344,
+          "logprob": -0.7578688263893127
+        },
+        {
+          "token_id": 356,
+          "token": " we",
+          "prob": 0.9624016880989075,
+          "logprob": -0.03832336142659187
+        },
+        {
+          "token_id": 821,
+          "token": "'re",
+          "prob": 0.5553439855575562,
+          "logprob": -0.5881675481796265
+        },
+        {
+          "token_id": 287,
+          "token": " in",
+          "prob": 0.5152868628501892,
+          "logprob": -0.6630315184593201
+        },
+        {
+          "token_id": 281,
+          "token": " an",
+          "prob": 0.0065678758546710014,
+          "logprob": -5.025564670562744
+        },
+        {
+          "token_id": 2858,
+          "token": " environment",
+          "prob": 0.7812739014625549,
+          "logprob": -0.24682947993278503
+        },
+        {
+          "token_id": 810,
+          "token": " where",
+          "prob": 0.852467954158783,
+          "logprob": -0.15961965918540955
+        },
+        {
+          "token_id": 356,
+          "token": " we",
+          "prob": 0.9030983448028564,
+          "logprob": -0.10192382335662842
+        },
+        {
+          "token_id": 821,
+          "token": "'re",
+          "prob": 0.8846285343170166,
+          "logprob": -0.12258745729923248
+        },
+        {
+          "token_id": 407,
+          "token": " not",
+          "prob": 0.5061898231506348,
+          "logprob": -0.6808435320854187
+        },
+        {
+          "token_id": 3142,
+          "token": " allowed",
+          "prob": 0.5040356516838074,
+          "logprob": -0.6851083040237427
+        },
+        {
+          "token_id": 284,
+          "token": " to",
+          "prob": 0.9996944665908813,
+          "logprob": -0.00030558009166270494
+        },
+        {
+          "token_id": 307,
+          "token": " be",
+          "prob": 0.3746551275253296,
+          "logprob": -0.9817492961883545
+        }
+      ],
+      "full_text": "Something happens to us when we're in an environment where we're not allowed to be"
+    },
+    {
+      "id": 3,
+      "tokens": [
+        {
+          "token_id": 284,
+          "token": " to",
+          "prob": 0.10745156556367874,
+          "logprob": -2.230715036392212
+        },
+        {
+          "token_id": 606,
+          "token": " them",
+          "prob": 0.11428605765104294,
+          "logprob": -2.169050693511963
+        },
+        {
+          "token_id": 326,
+          "token": " that",
+          "prob": 0.06164523959159851,
+          "logprob": -2.7863593101501465
+        },
+        {
+          "token_id": 484,
+          "token": " they",
+          "prob": 0.604769766330719,
+          "logprob": -0.5029074549674988
+        },
+        {
+          "token_id": 466,
+          "token": " do",
+          "prob": 0.02970493771135807,
+          "logprob": -3.516442060470581
+        },
+        {
+          "token_id": 407,
+          "token": " not",
+          "prob": 0.980263888835907,
+          "logprob": -0.019933469593524933
+        },
+        {
+          "token_id": 760,
+          "token": " know",
+          "prob": 0.2995074689388275,
+          "logprob": -1.2056158781051636
+        },
+        {
+          "token_id": 644,
+          "token": " what",
+          "prob": 0.5624578595161438,
+          "logprob": -0.5754390954971313
+        },
+        {
+          "token_id": 284,
+          "token": " to",
+          "prob": 0.41156184673309326,
+          "logprob": -0.8877959847450256
+        },
+        {
+          "token_id": 466,
+          "token": " do",
+          "prob": 0.9911240339279175,
+          "logprob": -0.008915591984987259
+        },
+        {
+          "token_id": 13,
+          "token": ".",
+          "prob": 0.38710683584213257,
+          "logprob": -0.9490545988082886
+        },
+        {
+          "token_id": 198,
+          "token": "\n",
+          "prob": 0.30666911602020264,
+          "logprob": -1.181985855102539
+        },
+        {
+          "token_id": 198,
+          "token": "\n",
+          "prob": 0.999998927116394,
+          "logprob": -1.0728841743912199e-06
+        },
+        {
+          "token_id": 198,
+          "token": "\n",
+          "prob": 1.0,
+          "logprob": 0.0
+        },
+        {
+          "token_id": 40,
+          "token": "I",
+          "prob": 0.22769148647785187,
+          "logprob": -1.4797637462615967
+        }
+      ],
+      "full_text": "Something happens to them that they do not know what to do.\n\n\nI"
+    },
+    {
+      "id": 4,
+      "tokens": [
+        {
+          "token_id": 618,
+          "token": " when",
+          "prob": 0.7842368483543396,
+          "logprob": -0.2430441975593567
+        },
+        {
+          "token_id": 345,
+          "token": " you",
+          "prob": 0.8792757391929626,
+          "logprob": -0.12865673005580902
+        },
+        {
+          "token_id": 821,
+          "token": "'re",
+          "prob": 0.47640618681907654,
+          "logprob": -0.7414844632148743
+        },
+        {
+          "token_id": 287,
+          "token": " in",
+          "prob": 0.3860923945903778,
+          "logprob": -0.9516785740852356
+        },
+        {
+          "token_id": 257,
+          "token": " a",
+          "prob": 0.7412889003753662,
+          "logprob": -0.2993648648262024
+        },
+        {
+          "token_id": 1295,
+          "token": " place",
+          "prob": 0.183585062623024,
+          "logprob": -1.6950771808624268
+        },
+        {
+          "token_id": 810,
+          "token": " where",
+          "prob": 0.8237051367759705,
+          "logprob": -0.19394265115261078
+        },
+        {
+          "token_id": 345,
+          "token": " you",
+          "prob": 0.8545044660568237,
+          "logprob": -0.15723355114459991
+        },
+        {
+          "token_id": 821,
+          "token": "'re",
+          "prob": 0.7855377197265625,
+          "logprob": -0.2413868010044098
+        },
+        {
+          "token_id": 407,
+          "token": " not",
+          "prob": 0.7780453562736511,
+          "logprob": -0.2509704530239105
+        },
+        {
+          "token_id": 1107,
+          "token": " really",
+          "prob": 0.023374496027827263,
+          "logprob": -3.7561097145080566
+        },
+        {
+          "token_id": 4203,
+          "token": " feeling",
+          "prob": 0.02680627442896366,
+          "logprob": -3.619119167327881
+        },
+        {
+          "token_id": 262,
+          "token": " the",
+          "prob": 0.3040776550769806,
+          "logprob": -1.19047212600708
+        },
+        {
+          "token_id": 2356,
+          "token": " pain",
+          "prob": 0.11420007795095444,
+          "logprob": -2.1698033809661865
+        },
+        {
+          "token_id": 13,
+          "token": ".",
+          "prob": 0.5117059946060181,
+          "logprob": -0.6700050234794617
+        }
+      ],
+      "full_text": "Something happens when you're in a place where you're not really feeling the pain."
+    },
+    {
+      "id": 5,
+      "tokens": [
+        {
+          "token_id": 618,
+          "token": " when",
+          "prob": 0.7842368483543396,
+          "logprob": -0.2430441975593567
+        },
+        {
+          "token_id": 345,
+          "token": " you",
+          "prob": 0.8792757391929626,
+          "logprob": -0.12865673005580902
+        },
+        {
+          "token_id": 1011,
+          "token": " take",
+          "prob": 0.022718509659171104,
+          "logprob": -3.7845752239227295
+        },
+        {
+          "token_id": 257,
+          "token": " a",
+          "prob": 0.7617612481117249,
+          "logprob": -0.2721220850944519
+        },
+        {
+          "token_id": 804,
+          "token": " look",
+          "prob": 0.6171350479125977,
+          "logprob": -0.48266738653182983
+        },
+        {
+          "token_id": 379,
+          "token": " at",
+          "prob": 0.9988306164741516,
+          "logprob": -0.0011700678151100874
+        },
+        {
+          "token_id": 262,
+          "token": " the",
+          "prob": 0.8725153803825378,
+          "logprob": -0.13637499511241913
+        },
+        {
+          "token_id": 1366,
+          "token": " data",
+          "prob": 0.3009325861930847,
+          "logprob": -1.2008689641952515
+        },
+        {
+          "token_id": 287,
+          "token": " in",
+          "prob": 0.03393816947937012,
+          "logprob": -3.3832149505615234
+        },
+        {
+          "token_id": 530,
+          "token": " one",
+          "prob": 0.0008774864836595953,
+          "logprob": -7.038448810577393
+        },
+        {
+          "token_id": 286,
+          "token": " of",
+          "prob": 0.5585187673568726,
+          "logprob": -0.5824670791625977
+        },
+        {
+          "token_id": 262,
+          "token": " the",
+          "prob": 0.8668261766433716,
+          "logprob": -0.14291681349277496
+        },
+        {
+          "token_id": 8893,
+          "token": " tables",
+          "prob": 0.55131995677948,
+          "logprob": -0.5954399704933167
+        },
+        {
+          "token_id": 290,
+          "token": " and",
+          "prob": 0.10983610153198242,
+          "logprob": -2.208765983581543
+        },
+        {
+          "token_id": 345,
+          "token": " you",
+          "prob": 0.8043472766876221,
+          "logprob": -0.21772417426109314
+        }
+      ],
+      "full_text": "Something happens when you take a look at the data in one of the tables and you"
+    },
+    {
+      "id": 6,
+      "tokens": [
+        {
+          "token_id": 618,
+          "token": " when",
+          "prob": 0.7842368483543396,
+          "logprob": -0.2430441975593567
+        },
+        {
+          "token_id": 345,
+          "token": " you",
+          "prob": 0.8792757391929626,
+          "logprob": -0.12865673005580902
+        },
+        {
+          "token_id": 466,
+          "token": " do",
+          "prob": 0.02084704115986824,
+          "logprob": -3.8705432415008545
+        },
+        {
+          "token_id": 1223,
+          "token": " something",
+          "prob": 0.3622019588947296,
+          "logprob": -1.01555335521698
+        },
+        {
+          "token_id": 326,
+          "token": " that",
+          "prob": 0.5686195492744446,
+          "logprob": -0.5645437240600586
+        },
+        {
+          "token_id": 345,
+          "token": " you",
+          "prob": 0.29453375935554504,
+          "logprob": -1.22236168384552
+        },
+        {
+          "token_id": 892,
+          "token": " think",
+          "prob": 0.28519266843795776,
+          "logprob": -1.2545902729034424
+        },
+        {
+          "token_id": 345,
+          "token": " you",
+          "prob": 0.08146466314792633,
+          "logprob": -2.5075860023498535
+        },
+        {
+          "token_id": 460,
+          "token": " can",
+          "prob": 0.20093098282814026,
+          "logprob": -1.6047937870025635
+        },
+        {
+          "token_id": 466,
+          "token": " do",
+          "prob": 0.916407585144043,
+          "logprob": -0.08729404956102371
+        },
+        {
+          "token_id": 11,
+          "token": ",",
+          "prob": 0.5074859261512756,
+          "logprob": -0.6782863140106201
+        },
+        {
+          "token_id": 326,
+          "token": " that",
+          "prob": 0.01749548129737377,
+          "logprob": -4.045812606811523
+        },
+        {
+          "token_id": 345,
+          "token": " you",
+          "prob": 0.8264813423156738,
+          "logprob": -0.1905779391527176
+        },
+        {
+          "token_id": 389,
+          "token": " are",
+          "prob": 0.009326208382844925,
+          "logprob": -4.6749267578125
+        },
+        {
+          "token_id": 1498,
+          "token": " able",
+          "prob": 0.12990087270736694,
+          "logprob": -2.0409836769104004
+        }
+      ],
+      "full_text": "Something happens when you do something that you think you can do, that you are able"
+    },
+    {
+      "id": 7,
+      "tokens": [
+        {
+          "token_id": 618,
+          "token": " when",
+          "prob": 0.7842368483543396,
+          "logprob": -0.2430441975593567
+        },
+        {
+          "token_id": 345,
+          "token": " you",
+          "prob": 0.8792757391929626,
+          "logprob": -0.12865673005580902
+        },
+        {
+          "token_id": 821,
+          "token": "'re",
+          "prob": 0.47640618681907654,
+          "logprob": -0.7414844632148743
+        },
+        {
+          "token_id": 257,
+          "token": " a",
+          "prob": 0.28568753600120544,
+          "logprob": -1.2528566122055054
+        },
+        {
+          "token_id": 5141,
+          "token": " kid",
+          "prob": 0.5383599400520325,
+          "logprob": -0.6192278861999512
+        },
+        {
+          "token_id": 13,
+          "token": ".",
+          "prob": 0.37969714403152466,
+          "logprob": -0.9683813452720642
+        },
+        {
+          "token_id": 198,
+          "token": "\n",
+          "prob": 0.1747405081987381,
+          "logprob": -1.7444531917572021
+        },
+        {
+          "token_id": 198,
+          "token": "\n",
+          "prob": 0.9999996423721313,
+          "logprob": -3.576279254957626e-07
+        },
+        {
+          "token_id": 198,
+          "token": "\n",
+          "prob": 1.0,
+          "logprob": 0.0
+        },
+        {
+          "token_id": 1,
+          "token": "\"",
+          "prob": 0.16846488416194916,
+          "logprob": -1.781027913093567
+        },
+        {
+          "token_id": 40,
+          "token": "I",
+          "prob": 0.6270025968551636,
+          "logprob": -0.4668045938014984
+        },
+        {
+          "token_id": 373,
+          "token": " was",
+          "prob": 0.19729624688625336,
+          "logprob": -1.6230489015579224
+        },
+        {
+          "token_id": 257,
+          "token": " a",
+          "prob": 0.314314067363739,
+          "logprob": -1.1573625802993774
+        },
+        {
+          "token_id": 5141,
+          "token": " kid",
+          "prob": 0.4742755889892578,
+          "logprob": -0.7459667325019836
+        },
+        {
+          "token_id": 618,
+          "token": " when",
+          "prob": 0.258938729763031,
+          "logprob": -1.3511638641357422
+        }
+      ],
+      "full_text": "Something happens when you're a kid.\n\n\n\"I was a kid when"
+    },
+    {
+      "id": 8,
+      "tokens": [
+        {
+          "token_id": 284,
+          "token": " to",
+          "prob": 0.10745156556367874,
+          "logprob": -2.230715036392212
+        },
+        {
+          "token_id": 345,
+          "token": " you",
+          "prob": 0.4825740158557892,
+          "logprob": -0.7286209464073181
+        },
+        {
+          "token_id": 618,
+          "token": " when",
+          "prob": 0.7009878158569336,
+          "logprob": -0.3552647829055786
+        },
+        {
+          "token_id": 345,
+          "token": " you",
+          "prob": 0.9937857389450073,
+          "logprob": -0.006233649794012308
+        },
+        {
+          "token_id": 389,
+          "token": " are",
+          "prob": 0.05682865157723427,
+          "logprob": -2.8677146434783936
+        },
+        {
+          "token_id": 257,
+          "token": " a",
+          "prob": 0.14740963280200958,
+          "logprob": -1.9145399332046509
+        },
+        {
+          "token_id": 1200,
+          "token": " child",
+          "prob": 0.2721679210662842,
+          "logprob": -1.3013360500335693
+        },
+        {
+          "token_id": 290,
+          "token": " and",
+          "prob": 0.08670993894338608,
+          "logprob": -2.4451868534088135
+        },
+        {
+          "token_id": 345,
+          "token": " you",
+          "prob": 0.9588561058044434,
+          "logprob": -0.04201425984501839
+        },
+        {
+          "token_id": 892,
+          "token": " think",
+          "prob": 0.010756765492260456,
+          "logprob": -4.532220363616943
+        },
+        {
+          "token_id": 345,
+          "token": " you",
+          "prob": 0.4297320544719696,
+          "logprob": -0.8445934057235718
+        },
+        {
+          "token_id": 423,
+          "token": " have",
+          "prob": 0.09442198276519775,
+          "logprob": -2.3599812984466553
+        },
+        {
+          "token_id": 257,
+          "token": " a",
+          "prob": 0.5126380920410156,
+          "logprob": -0.6681851744651794
+        },
+        {
+          "token_id": 1049,
+          "token": " great",
+          "prob": 0.044939491897821426,
+          "logprob": -3.102438449859619
+        },
+        {
+          "token_id": 2003,
+          "token": " future",
+          "prob": 0.29062727093696594,
+          "logprob": -1.2357137203216553
+        }
+      ],
+      "full_text": "Something happens to you when you are a child and you think you have a great future"
+    },
+    {
+      "id": 9,
+      "tokens": [
+        {
+          "token_id": 618,
+          "token": " when",
+          "prob": 0.7842368483543396,
+          "logprob": -0.2430441975593567
+        },
+        {
+          "token_id": 345,
+          "token": " you",
+          "prob": 0.8792757391929626,
+          "logprob": -0.12865673005580902
+        },
+        {
+          "token_id": 467,
+          "token": " go",
+          "prob": 0.02154492773115635,
+          "logprob": -3.8376147747039795
+        },
+        {
+          "token_id": 284,
+          "token": " to",
+          "prob": 0.7501360177993774,
+          "logprob": -0.2875007390975952
+        },
+        {
+          "token_id": 257,
+          "token": " a",
+          "prob": 0.43639346957206726,
+          "logprob": -0.8292109966278076
+        },
+        {
+          "token_id": 2151,
+          "token": " party",
+          "prob": 0.07944341748952866,
+          "logprob": -2.532710313796997
+        },
+        {
+          "token_id": 810,
+          "token": " where",
+          "prob": 0.017705317586660385,
+          "logprob": -4.033890247344971
+        },
+        {
+          "token_id": 345,
+          "token": " you",
+          "prob": 0.7574982643127441,
+          "logprob": -0.27773404121398926
+        },
+        {
+          "token_id": 423,
+          "token": " have",
+          "prob": 0.1470157504081726,
+          "logprob": -1.9172155857086182
+        },
+        {
+          "token_id": 257,
+          "token": " a",
+          "prob": 0.6852825284004211,
+          "logprob": -0.3779240846633911
+        },
+        {
+          "token_id": 1256,
+          "token": " lot",
+          "prob": 0.6048777103424072,
+          "logprob": -0.5027289390563965
+        },
+        {
+          "token_id": 286,
+          "token": " of",
+          "prob": 0.9999117851257324,
+          "logprob": -8.821876690490171e-05
+        },
+        {
+          "token_id": 661,
+          "token": " people",
+          "prob": 0.8600029349327087,
+          "logprob": -0.15081948041915894
+        },
+        {
+          "token_id": 508,
+          "token": " who",
+          "prob": 0.1827246993780136,
+          "logprob": -1.6997746229171753
+        },
+        {
+          "token_id": 389,
+          "token": " are",
+          "prob": 0.9258897304534912,
+          "logprob": -0.07700013369321823
+        }
+      ],
+      "full_text": "Something happens when you go to a party where you have a lot of people who are"
+    }
+  ]
+}

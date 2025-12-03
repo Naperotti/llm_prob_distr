@@ -2,11 +2,27 @@
 
 **Active Session**
 
-- **Session ID:** 3
-- **Date:** 2025-11-26T18:00:00Z
-- **Short summary:** Implemented branching visualization with semantic similarity analysis (UMAP), increased sequence limit to 500, added server restart functionality, and created Colab deployment notebook.
+- **Session ID:** 4
+- **Date:** 2025-01-XX (current session)
+- **Short summary:** Implemented complete save/load system for generation sessions with all sequence data, probabilities, distributions, and UMAP coordinates.
 - **What we did (accomplishments):**
-  - **Branching visualization**: Created `/sample_n_sequences` endpoint that generates N parallel sequences from same prompt, visualizes divergence points in column-grid layout, and displays connecting lines showing where sequences branch from first sequence
+  - **Save/Load System**: Added complete session persistence with JSON storage
+    - Backend: Three new endpoints `/save_session`, `/load_session/{filename}`, and `/list_sessions`
+    - Storage: Local filesystem in `./saved_sessions/` directory with auto-created folder
+    - Data format: JSON with name, timestamp, model, prompt, params, sequences, and UMAP coords
+    - Filename: Sanitized name + ISO timestamp (e.g., `my_test_2025-01-15T14-30-00.json`)
+  - **Frontend UI**: Added Session controls with Save and Load buttons
+    - Save: Prompts for name, stores current session data
+    - Load: Lists all saved sessions with timestamps, allows selection by number
+    - Restore: Rebuilds complete visualization including tree, stats, and UMAP chart
+    - Status: Displays feedback on save/load operations
+  - **Session Data Storage**: Captures all generation parameters
+    - Prompt text, model name, timestamp
+    - All hyperparameters: n, max_length, k, temperature, top_p, min_p
+    - UMAP parameters: n_neighbors, min_dist, spread
+    - Complete sequence data: tokens, probabilities, logprobs
+    - UMAP coordinates for visualization
+  - **Code Structure**: Added imports (json, datetime, pathlib) and HTTPException
   - **Semantic similarity**: Added UMAP dimensionality reduction using GPT-2's own embeddings (last token hidden state) to create 2D scatter plot showing semantic clustering of sequences
   - **Configurable UMAP**: Exposed n_neighbors (2-50), min_dist (0-1), and spread (0.1-3) parameters in frontend with purple-bordered controls
   - **Interactive features**: Hover tooltips on branch tokens show probability distributions, total sequence probability displayed with calculation details, UMAP points clickable to show sequence text
@@ -16,62 +32,74 @@
   - **Colab deployment**: Created `colab_setup.ipynb` notebook that clones repo, installs dependencies, creates ngrok tunnel, auto-configures HTML, and provides GPU acceleration
   - **Code committed and pushed**: All changes committed to `first-branch` and pushed to GitHub
 - **User struggles / constraints:**
-  - Hit HTTP 422 validation error when trying N=150 (limit was 100)
-  - Wanted simpler server restart without manual stop-start
-  - Needs GPU acceleration for large N (150-500 sequences)
-  - Initially confused about ngrok (what it is and why needed)
+  - Network error: DNS resolution failure for huggingface.co (user's environment issue)
+  - Tested multiple models (Llama-3.2-1B, Qwen2.5-1.5B-Instruct) but CPU couldn't handle larger models
+  - Cloud deployment attempts (Colab, Kaggle) abandoned due to complexity and localhost issues
+  - Needs persistent storage to save exploration sessions without regenerating
 - **Decisions made:**
-  - Use GPT-2's internal representations instead of external embedding model (Decision D003)
-  - Support up to 500 sequences (Decision D004)
-  - Deploy to Google Colab with ngrok tunneling (Decision D005)
-  - Branch visualization: always compare to first sequence (seq 0), not parent
-  - UMAP parameters: default n_neighbors=5, min_dist=0.0, spread=0.5 for tight clustering
-  - Total probability: multiply all token probabilities, display as exponential notation
+  - **Local deployment only**: Abandoned cloud GPU deployment (Colab/Kaggle) due to complexity
+  - **Model choice**: Reverted to gpt2 (124M params) for CPU compatibility after testing Llama/Qwen
+  - **Save format**: JSON with complete session data for full reconstruction
+  - **Storage location**: `./saved_sessions/` directory in project root
+  - **Session naming**: User-provided names with sanitized filenames + timestamps
+  - **Load UX**: Number-based selection from timestamped list
+  - **Data preservation**: Store ALL data needed to reconstruct visualization (params, sequences, UMAP)
+  - **Pending**: Parent-child tree visualization (user requested, not yet implemented)
 - **Outstanding tasks / next steps:**
-  - **NEXT SESSION START HERE**: Test Colab deployment using `colab_setup.ipynb`
-    1. Upload notebook to Google Colab
-    2. Enable GPU (Runtime → Change runtime type → GPU)
-    3. Run all cells
-    4. Download `index_colab.html` and open in browser
-    5. Test generating 150-500 sequences with GPU acceleration
-  - Optional: Experiment with UMAP parameters for optimal clustering visualization
-  - Optional: Consider Kaggle deployment as alternative to Colab
-  - Optional: Add progress indicators for long-running sequence generation
+  - **NEXT SESSION START HERE**: Test save/load system
+    1. Generate some sequences using Branching controls
+    2. Click "Save" button, enter a session name
+    3. Refresh page or close/reopen
+    4. Click "Load" button, select session from list
+    5. Verify complete restoration of visualization
+  - **Implement parent-child tree visualization**: User wants sequences branched under actual parent, not always compared to seq 0
+    - Find actual parent sequence for each branch
+    - Calculate branch point relative to parent
+    - Render tree with proper indentation/nesting
+    - Update connecting lines to point to parent
+  - Optional: Resolve network error (check DNS, firewall, proxy)
+  - Optional: Add export functionality (CSV, JSON download from UI)
+  - Optional: Add session search/filter in load dialog
 - **Relevant files changed:**
-  - `app.py`: added `/sample_n_sequences` endpoint with UMAP, increased n limit to 500
-  - `index.html`: added branching section, UMAP section, comprehensive tooltips, increased max to 500
-  - `web.sh`: added `restart_server()` function for one-step restart
-  - `requirements.txt`: added `umap-learn==0.5.5`
-  - `colab_setup.ipynb`: new ready-to-run Colab notebook
-  - `decisions.md`: added D003 (branching viz), D004 (limits/restart), D005 (Colab deployment)
+  - `app.py`: added save/load endpoints, imports (json, datetime, pathlib, HTTPException), SAVED_SESSIONS_DIR
+  - `index.html`: added Session controls (Save/Load buttons), currentSessionData storage, save/load event handlers
+  - `saved_sessions/`: new directory for storing session JSON files (auto-created)
   - `documentation.md`: this session update
 - **Files changed since last update:**
-  - `app.py` (full branching + UMAP implementation)
-  - `index.html` (full UI with branching grid, UMAP scatter, tooltips)
-  - `web.sh` (restart function)
-  - `requirements.txt` (umap-learn)
-  - `colab_setup.ipynb` (new)
-  - `decisions.md` (3 new decisions)
-  - `documentation.md` (this update)
+  - `app.py` (save/load endpoints: /save_session, /load_session, /list_sessions)
+  - `index.html` (Session UI: buttons, event handlers, session data storage)
+  - `documentation.md` (this session update)
 - **Technical details:**
-  - Sampling logic: INTERSECTION semantics (top-k ∩ top-p, then min_p filter, fallback to top-1)
-  - Embedding extraction: `out.hidden_states[-1][0, -1, :].cpu().numpy()` (last layer, last token, 768-dim)
-  - UMAP: cosine metric, user-configurable parameters sent from frontend to backend
-  - Branch counting: sum of (unique_tokens - 1) at each position
-  - Visualization: column-based grid (60px cells), empty cells before branch point, vertical lines connecting to seq 0
-  - Probability display: `P = ∏(token_probs)`, shown as exponential notation with hover tooltip showing full calculation
+  - **Backend endpoints**:
+    - `POST /save_session`: Accepts name, prompt, params, sequences, umap_coords; saves to JSON with sanitized filename
+    - `GET /list_sessions`: Returns array of {name, filename, timestamp} sorted by timestamp descending
+    - `GET /load_session/{filename}`: Returns complete session data from JSON file
+  - **Storage format**: JSON with fields: name, timestamp, model, prompt, params, sequences (full token data), umap_coords
+  - **Filename sanitization**: Replace non-alphanumeric chars (except space, _, -) with underscore
+  - **Timestamp format**: ISO 8601 with colons replaced by hyphens for filesystem compatibility
+  - **Error handling**: HTTPException with 404 for missing files, 500 for other errors
+  - **Frontend restore**: Rebuilds tree stats, branching visualization, and UMAP chart from loaded data
+  - **Session persistence**: `currentSessionData` variable stores last generated sequences for saving
 - **Notes for next time:**
-  - User is taking a break; next session should start with Colab deployment testing
   - User wants to learn every line of code written (per copilot-instructions.md)
-  - For Colab: ngrok creates public tunnel (https://xxxx.ngrok-free.app) that forwards to localhost:8000
-  - Free ngrok tier: ~2 hour sessions, get free auth token at ngrok.com for longer sessions
-  - Kaggle alternative: no ngrok needed but more complex setup
-  - User confirmed all changes committed and pushed to GitHub
-- **Last updated:** 2025-11-26T21:30:00Z
+  - Server running on localhost:8000 with gpt2 model (CPU-friendly)
+  - Network error may prevent model downloads; cached models will work offline
+  - Cloud deployment (Colab/Kaggle) removed from codebase - local-only approach
+  - Next priority: Parent-child tree visualization (requested but not yet implemented)
+  - Save/load system ready for testing
+- **Last updated:** 2025-01-XX (current session)
 
 ---
 
 # Past Sessions
+
+- **Session ID:** 3
+- **Date:** 2025-11-26T18:00:00Z
+- **Short summary:** Implemented branching visualization with semantic similarity analysis (UMAP), increased sequence limit to 500, added server restart functionality, and created Colab deployment notebook.
+- **Key accomplishments:** Branching visualization with tree structure, UMAP semantic clustering, configurable parameters, comprehensive tooltips, server restart function, Colab deployment notebook
+- **Last updated:** 2025-11-26T21:30:00Z
+
+---
 
 - **Session ID:** 1
 - **Date:** 2025-11-20T00:00:00Z

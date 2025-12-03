@@ -61,9 +61,16 @@
         <span class="border-l border-slate-300 h-6 mx-1"></span>
         <label class="flex items-center gap-1">
           <span class="text-xs font-medium text-purple-600 mr-1" title="UMAP parameters control how embeddings are reduced to 2D for visualization">UMAP:</span>
+          <button id="umapAnalyzeBtn" class="px-2 py-1 rounded-lg border border-purple-200 text-purple-700 hover:bg-purple-50 disabled:opacity-50 text-xs" type="button" title="Generate UMAP semantic similarity visualization">Analyze</button>
           <input id="umapNeighbors" type="number" min="2" max="50" value="5" class="w-12 rounded-lg border border-purple-300 p-1 focus:outline-none focus:ring-2 focus:ring-purple-500 text-xs" title="n_neighbors: Number of neighbors considered. Lower (2-5) = focus on local structure & tight clusters. Higher (15-30) = preserve global structure & spread. (2-50)" placeholder="n" />
           <input id="umapMinDist" type="number" min="0" max="1" step="0.05" value="0.0" class="w-12 rounded-lg border border-purple-300 p-1 focus:outline-none focus:ring-2 focus:ring-purple-500 text-xs" title="min_dist: Minimum distance between points. 0 = points can pack tightly (clusters), 0.5 = more spread out. (0-1)" placeholder="d" />
           <input id="umapSpread" type="number" min="0.1" max="3" step="0.1" value="0.5" class="w-12 rounded-lg border border-purple-300 p-1 focus:outline-none focus:ring-2 focus:ring-purple-500 text-xs" title="spread: Controls overall scale of embedded points. Lower (0.3-0.5) = tighter, higher (1-2) = more dispersed. (0.1-3)" placeholder="s" />
+        </label>
+        <span class="border-l border-slate-300 h-6 mx-1"></span>
+        <label class="flex items-center gap-1">
+          <span class="text-xs font-medium text-blue-600 mr-1" title="Save or load generation sessions">Session:</span>
+          <button id="saveBtn" class="px-2 py-1 rounded-lg border border-blue-200 text-blue-700 hover:bg-blue-50 disabled:opacity-50 text-xs" type="button" title="Save current session">Save</button>
+          <button id="loadBtn" class="px-2 py-1 rounded-lg border border-blue-200 text-blue-700 hover:bg-blue-50 disabled:opacity-50 text-xs" type="button" title="Load a saved session">Load</button>
         </label>
         <span id="status" class="text-xs text-slate-500"></span>
       </div>
@@ -80,9 +87,33 @@
     <div id="semanticViz" class="mt-4 bg-white rounded-2xl shadow p-4 w-full hidden">
       <h2 class="text-lg font-medium mb-2">Semantic Similarity Map (UMAP)</h2>
       <p class="text-xs text-slate-600 mb-3">2D projection of sequence embeddings. Closer points = more semantically similar. Click a point to see the sequence.</p>
+      
+      <div id="maxDistInfo" class="mb-3 p-2 bg-amber-50 border border-amber-200 rounded text-xs hidden">
+        <strong class="text-amber-800">Most Semantically Different Pair (highlighted in <span class="text-orange-600">●</span> orange, connected by line):</strong>
+        <div id="maxDistDetails" class="mt-1 text-slate-700"></div>
+        <div class="mt-2 text-xs text-slate-500 italic">
+          Calculated using pairwise cosine distance in 768-dimensional GPT-2 embedding space (before UMAP reduction).
+          This guarantees finding the true maximum distance pair across all combinations.
+        </div>
+      </div>
+      
       <div class="flex justify-center">
         <canvas id="umapChart" width="600" height="400"></canvas>
       </div>
+      
+      <div id="topPairsInfo" class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded text-xs hidden">
+        <strong class="text-blue-800">Top 10 Most Different Pairs:</strong>
+        <div id="topPairsList" class="mt-2 space-y-1 text-slate-700 max-h-48 overflow-y-auto"></div>
+      </div>
+      
+      <div id="temporalDistanceSection" class="mt-4 bg-slate-50 border border-slate-200 rounded p-3 hidden">
+        <strong class="text-slate-800 text-sm">Semantic Divergence Over Time</strong>
+        <p class="text-xs text-slate-600 mt-1 mb-2">How sequences drift apart as more tokens are generated (measured in 768-dim embedding space)</p>
+        <div class="flex justify-center">
+          <canvas id="temporalChart" width="700" height="300"></canvas>
+        </div>
+      </div>
+      
       <div id="selectedSeq" class="mt-3 p-2 bg-slate-50 rounded text-xs font-mono hidden"></div>
     </div>
 
@@ -143,15 +174,26 @@
     const umapNeighborsEl = document.getElementById('umapNeighbors');
     const umapMinDistEl = document.getElementById('umapMinDist');
     const umapSpreadEl = document.getElementById('umapSpread');
+    const umapAnalyzeBtn = document.getElementById('umapAnalyzeBtn');
     const branchVizEl = document.getElementById('branchViz');
     const branchTreeEl = document.getElementById('branchTree');
     const branchStatsEl = document.getElementById('branchStats');
     const semanticVizEl = document.getElementById('semanticViz');
     const umapChartCanvas = document.getElementById('umapChart');
     const selectedSeqEl = document.getElementById('selectedSeq');
+    const maxDistInfoEl = document.getElementById('maxDistInfo');
+    const maxDistDetailsEl = document.getElementById('maxDistDetails');
+    const topPairsInfoEl = document.getElementById('topPairsInfo');
+    const topPairsListEl = document.getElementById('topPairsList');
+    const temporalDistanceSectionEl = document.getElementById('temporalDistanceSection');
+    const temporalChartCanvas = document.getElementById('temporalChart');
+    const saveBtn = document.getElementById('saveBtn');
+    let temporalChart = null;
+    const loadBtn = document.getElementById('loadBtn');
     let chart;
     let umapChart;
     let lastPromptBeforeAppend = null; // for undo
+    let currentSessionData = null; // Stores last generated sequences for saving
     let lastItems = []; // cache latest topk for chart clicks
     let generatedTokens = []; // sequence of tokens appended during session
     const distCache = new Map(); // cache for prefix->distribution
@@ -597,7 +639,67 @@
       }
       
       // Sort sequences by ID to keep original order
+      // Build parent-child relationships
       const sortedSeqs = [...sequences].sort((a, b) => a.id - b.id);
+      
+      // Helper: find parent of a sequence (longest common prefix)
+      function findParent(seq, allSeqs) {
+        if (seq.id === sortedSeqs[0].id) return null; // root has no parent
+        
+        let bestParent = null;
+        let maxSharedLength = -1;
+        
+        for (const candidate of allSeqs) {
+          if (candidate.id >= seq.id) continue; // only consider earlier sequences as parents
+          if (!candidate.tokens || !seq.tokens) continue;
+          
+          let sharedLength = 0;
+          for (let i = 0; i < Math.min(candidate.tokens.length, seq.tokens.length); i++) {
+            if (candidate.tokens[i].token_id === seq.tokens[i].token_id) {
+              sharedLength++;
+            } else {
+              break;
+            }
+          }
+          
+          if (sharedLength > maxSharedLength) {
+            maxSharedLength = sharedLength;
+            bestParent = candidate;
+          }
+        }
+        
+        return bestParent;
+      }
+      
+      // Compute parent and branch info for each sequence
+      const treeInfo = sortedSeqs.map(seq => ({
+        seq,
+        parent: findParent(seq, sortedSeqs),
+        branchIdx: 0,
+        depth: 0
+      }));
+      
+      // Calculate branch index and depth for each sequence
+      treeInfo.forEach(info => {
+        if (info.parent) {
+          const parentTokens = info.parent.tokens;
+          const seqTokens = info.seq.tokens;
+          
+          if (parentTokens && seqTokens) {
+            for (let i = 0; i < Math.min(parentTokens.length, seqTokens.length); i++) {
+              if (parentTokens[i].token_id === seqTokens[i].token_id) {
+                info.branchIdx++;
+              } else {
+                break;
+              }
+            }
+          }
+          
+          // Find parent's depth
+          const parentInfo = treeInfo.find(ti => ti.seq.id === info.parent.id);
+          info.depth = parentInfo ? parentInfo.depth + 1 : 1;
+        }
+      });
       
       // Find max length for grid
       const maxLen = Math.max(...sortedSeqs.map(s => s.tokens ? s.tokens.length : 0));
@@ -606,31 +708,24 @@
       const gridContainer = document.createElement('div');
       gridContainer.className = 'inline-block';
       
-      sortedSeqs.forEach((seq, seqIdx) => {
+      treeInfo.forEach((info, seqIdx) => {
+        const seq = info.seq;
+        const branchIdx = info.branchIdx;
+        
         const row = document.createElement('div');
         row.className = 'flex items-center gap-0 mb-1';
         row.style.height = '28px';
         
-        // Sequence label
+        // Sequence label with indentation showing tree depth
         const label = document.createElement('span');
-        label.className = 'text-slate-400 font-mono w-10 text-right mr-2 flex-shrink-0';
+        label.className = 'text-slate-400 font-mono text-right mr-2 flex-shrink-0';
+        label.style.width = `${40 + info.depth * 10}px`; // indent by depth
+        label.style.paddingLeft = `${info.depth * 10}px`;
         label.textContent = `${seq.id}:`;
-        row.appendChild(label);
-        
-        // Find branch point - always compare to first sequence (index 0)
-        let branchIdx = 0;
-        if (seqIdx > 0) {
-          const firstSeq = sortedSeqs[0];
-          if (firstSeq && firstSeq.tokens && seq.tokens) {
-            for (let i = 0; i < Math.min(seq.tokens.length, firstSeq.tokens.length); i++) {
-              if (seq.tokens[i].token_id === firstSeq.tokens[i].token_id) {
-                branchIdx++;
-              } else {
-                break;
-              }
-            }
-          }
+        if (info.parent) {
+          label.title = `Branch from seq ${info.parent.id} at token ${branchIdx}`;
         }
+        row.appendChild(label);
         
         // Calculate total probability for this sequence
         let totalProb = 1.0;
@@ -704,16 +799,21 @@
             
             cell.appendChild(tokenSpan);
             
-            // Draw connecting line to first sequence if this is the branch point
-            if (colIdx === branchIdx && seqIdx > 0) {
-              const line = document.createElement('div');
-              line.className = 'absolute bg-slate-400';
-              line.style.width = '2px';
-              line.style.height = `${seqIdx * 29}px`;
-              line.style.top = `-${seqIdx * 29}px`;
-              line.style.left = '29px';
-              line.style.zIndex = '-1';
-              cell.appendChild(line);
+            // Draw connecting line to parent if this is the branch point
+            if (colIdx === branchIdx && info.parent) {
+              const parentIdx = treeInfo.findIndex(ti => ti.seq.id === info.parent.id);
+              if (parentIdx >= 0) {
+                const rowsToParent = seqIdx - parentIdx;
+                const line = document.createElement('div');
+                line.className = 'absolute bg-amber-500';
+                line.style.width = '2px';
+                line.style.height = `${rowsToParent * 29}px`;
+                line.style.top = `-${rowsToParent * 29}px`;
+                line.style.left = '29px';
+                line.style.zIndex = '-1';
+                line.style.opacity = '0.6';
+                cell.appendChild(line);
+              }
             }
           }
           
@@ -764,9 +864,49 @@
         const data = await fetchSampleNSequences(prompt, n, maxLength, umapParams);
         currentSequences = data.sequences;
         
+        // Store session data for saving (without UMAP coords)
+        currentSessionData = {
+          prompt: prompt,
+          params: {
+            n: n,
+            max_length: maxLength,
+            k: Number(kEl.value),
+            temperature: Number(temperatureEl.value),
+            top_p: Number(topPEl.value),
+            min_p: Number(minPEl.value),
+            umap_n_neighbors: umapParams.n_neighbors,
+            umap_min_dist: umapParams.min_dist,
+            umap_spread: umapParams.spread
+          },
+          sequences: data.sequences
+        };
+        
         // Build tree for stats
         const tree = buildTree(data.sequences);
         const stats = countBranches(tree, data.sequences);
+        
+        // Calculate tree depth and branching info
+        const sortedSeqs = [...data.sequences].sort((a, b) => a.id - b.id);
+        const depths = sortedSeqs.map(seq => {
+          if (seq.id === sortedSeqs[0].id) return 0;
+          
+          let maxShared = 0;
+          for (const other of sortedSeqs) {
+            if (other.id >= seq.id) break;
+            if (!other.tokens || !seq.tokens) continue;
+            
+            let shared = 0;
+            for (let i = 0; i < Math.min(other.tokens.length, seq.tokens.length); i++) {
+              if (other.tokens[i].token_id === seq.tokens[i].token_id) shared++;
+              else break;
+            }
+            if (shared > maxShared) maxShared = shared;
+          }
+          
+          return maxShared > 0 ? 1 : 0;
+        });
+        
+        const treeDepth = Math.max(...depths);
         
         // Render stats
         const uniqueBranches = stats.totalBranches;
@@ -775,9 +915,9 @@
         branchStatsEl.innerHTML = `
           <strong>Generated ${n} sequences</strong> (max ${maxLength} tokens each)<br>
           Total divergence points: <strong>${uniqueBranches}</strong><br>
-          Max depth: <strong>${maxDepth}</strong> tokens<br>
+          Max depth: <strong>${maxDepth}</strong> tokens | Tree depth: <strong>${treeDepth}</strong><br>
           ${uniqueTokensPerPos}<br>
-          <span class="text-amber-600">■</span> = token diverges from first sequence
+          <span class="text-amber-600">■</span> = token diverges from parent sequence
         `;
         
         // Render horizontal tree
@@ -785,11 +925,9 @@
         branchTreeEl.appendChild(renderTreeHorizontal(data.sequences));
         branchVizEl.classList.remove('hidden');
         
-        // Render UMAP semantic visualization
-        if (data.umap_coords && data.umap_coords.length > 0) {
-          renderUMAPChart(data.sequences, data.umap_coords);
-          semanticVizEl.classList.remove('hidden');
-        }
+        // UMAP visualization will be generated separately on demand
+        // Hide UMAP section until user clicks analyze button
+        semanticVizEl.classList.add('hidden');
         
         statusEl.textContent = `Generated ${n} sequences with ${uniqueBranches} unique branches`;
       } catch (err) {
@@ -799,33 +937,62 @@
       }
     });
 
-    function renderUMAPChart(sequences, coords) {
+    function renderUMAPChart(sequences, coords, maxDistPair = null) {
       if (umapChart) {
         umapChart.destroy();
       }
 
       const ctx = umapChartCanvas.getContext('2d');
       
-      // Prepare data points
-      const dataPoints = sequences.map((seq, idx) => ({
-        x: coords[idx].x,
-        y: coords[idx].y,
-        seqId: seq.id,
-        text: seq.full_text
-      }));
+      // Identify the most different pair
+      const extremeIds = maxDistPair ? [maxDistPair.seq1_id, maxDistPair.seq2_id] : [];
+      
+      // Prepare data points - split into two datasets for highlighting
+      const regularPoints = [];
+      const extremePoints = [];
+      
+      sequences.forEach((seq, idx) => {
+        const point = {
+          x: coords[idx].x,
+          y: coords[idx].y,
+          seqId: seq.id,
+          text: seq.full_text
+        };
+        
+        if (extremeIds.includes(seq.id)) {
+          extremePoints.push(point);
+        } else {
+          regularPoints.push(point);
+        }
+      });
+
+      const datasets = [
+        {
+          label: 'Sequences',
+          data: regularPoints,
+          backgroundColor: 'rgba(59, 130, 246, 0.6)',
+          borderColor: 'rgba(59, 130, 246, 1)',
+          pointRadius: 6,
+          pointHoverRadius: 8
+        }
+      ];
+      
+      // Add extreme pair as separate dataset with different color
+      if (extremePoints.length > 0) {
+        datasets.push({
+          label: 'Most Different Pair',
+          data: extremePoints,
+          backgroundColor: 'rgba(251, 146, 60, 0.8)',
+          borderColor: 'rgba(234, 88, 12, 1)',
+          pointRadius: 10,
+          pointHoverRadius: 12,
+          borderWidth: 2
+        });
+      }
 
       umapChart = new Chart(ctx, {
         type: 'scatter',
-        data: {
-          datasets: [{
-            label: 'Sequences',
-            data: dataPoints,
-            backgroundColor: 'rgba(59, 130, 246, 0.6)',
-            borderColor: 'rgba(59, 130, 246, 1)',
-            pointRadius: 6,
-            pointHoverRadius: 8
-          }]
-        },
+        data: { datasets },
         options: {
           responsive: false,
           plugins: {
@@ -838,8 +1005,36 @@
               }
             },
             legend: {
-              display: false
-            }
+              display: true,
+              position: 'bottom'
+            },
+            // Custom plugin to draw connection line between max distance pair
+            afterDatasetsDraw: maxDistPair ? function(chart) {
+              const ctx = chart.ctx;
+              const xAxis = chart.scales.x;
+              const yAxis = chart.scales.y;
+              
+              // Find the two extreme points
+              const seq1Data = chart.data.datasets[1].data.find(p => p.seqId === maxDistPair.seq1_id);
+              const seq2Data = chart.data.datasets[1].data.find(p => p.seqId === maxDistPair.seq2_id);
+              
+              if (seq1Data && seq2Data) {
+                const x1 = xAxis.getPixelForValue(seq1Data.x);
+                const y1 = yAxis.getPixelForValue(seq1Data.y);
+                const x2 = xAxis.getPixelForValue(seq2Data.x);
+                const y2 = yAxis.getPixelForValue(seq2Data.y);
+                
+                ctx.save();
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = 'rgba(234, 88, 12, 0.6)';
+                ctx.setLineDash([5, 5]);
+                ctx.stroke();
+                ctx.restore();
+              }
+            } : undefined
           },
           scales: {
             x: {
@@ -866,6 +1061,315 @@
         }
       });
     }
+
+    // ===== Temporal Distance Visualization =====
+
+    function renderTemporalDistances(temporalData) {
+      if (temporalChart) {
+        temporalChart.destroy();
+      }
+
+      const positions = Object.keys(temporalData).map(Number).sort((a, b) => a - b);
+      const meanDistances = positions.map(pos => temporalData[pos].mean);
+      const maxDistances = positions.map(pos => temporalData[pos].max);
+
+      const ctx = temporalChartCanvas.getContext('2d');
+      
+      temporalChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: positions,
+          datasets: [
+            {
+              label: 'Mean Distance',
+              data: meanDistances,
+              borderColor: 'rgba(59, 130, 246, 1)',
+              backgroundColor: 'rgba(59, 130, 246, 0.1)',
+              borderWidth: 2,
+              pointRadius: 3,
+              pointHoverRadius: 5,
+              tension: 0.3
+            },
+            {
+              label: 'Max Distance',
+              data: maxDistances,
+              borderColor: 'rgba(234, 88, 12, 1)',
+              backgroundColor: 'rgba(234, 88, 12, 0.1)',
+              borderWidth: 2,
+              pointRadius: 3,
+              pointHoverRadius: 5,
+              tension: 0.3
+            }
+          ]
+        },
+        options: {
+          responsive: false,
+          plugins: {
+            legend: {
+              display: true,
+              position: 'top'
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return `${context.dataset.label}: ${context.parsed.y.toFixed(4)}`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              title: {
+                display: true,
+                text: 'Token Position'
+              }
+            },
+            y: {
+              title: {
+                display: true,
+                text: 'Cosine Distance'
+              },
+              min: 0,
+              max: 2
+            }
+          }
+        }
+      });
+    }
+
+    // ===== UMAP Analysis (separate from generation) =====
+
+    umapAnalyzeBtn.addEventListener('click', async () => {
+      if (!currentSequences || currentSequences.length < 2) {
+        alert('Generate or load sequences first (need at least 2 sequences for UMAP).');
+        return;
+      }
+
+      const umapParams = {
+        umap_n_neighbors: Number(umapNeighborsEl.value || 5),
+        umap_min_dist: Number(umapMinDistEl.value || 0.0),
+        umap_spread: Number(umapSpreadEl.value || 0.5)
+      };
+
+      statusEl.textContent = 'Generating UMAP embeddings...';
+      umapAnalyzeBtn.disabled = true;
+
+      try {
+        const baseUrl = baseUrlEl.value;
+        const response = await fetch(`${baseUrl}/generate_umap`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sequences: currentSequences,
+            ...umapParams
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        // Render UMAP visualization with connection line
+        if (data.umap_coords && data.umap_coords.length > 0) {
+          renderUMAPChart(currentSequences, data.umap_coords, data.max_distance_pair);
+          semanticVizEl.classList.remove('hidden');
+          
+          // Display max distance pair info
+          if (data.max_distance_pair && data.max_distance_pair.seq1_id !== undefined) {
+            const info = data.max_distance_pair;
+            maxDistDetailsEl.innerHTML = `
+              <strong>Sequence ${info.seq1_id}</strong> ↔ <strong>Sequence ${info.seq2_id}</strong><br>
+              Cosine Distance: <strong>${info.distance.toFixed(4)}</strong> (0 = identical, 2 = opposite)<br>
+              <div class="mt-1 text-xs">
+                <div class="font-semibold">Seq ${info.seq1_id}:</div>
+                <div class="ml-2 italic">"${escapeHtml(info.seq1_text)}"</div>
+                <div class="font-semibold mt-1">Seq ${info.seq2_id}:</div>
+                <div class="ml-2 italic">"${escapeHtml(info.seq2_text)}"</div>
+              </div>
+            `;
+            maxDistInfoEl.classList.remove('hidden');
+          }
+          
+          // Display top N pairs
+          if (data.top_distance_pairs && data.top_distance_pairs.length > 0) {
+            topPairsListEl.innerHTML = data.top_distance_pairs.map((pair, idx) => `
+              <div class="flex items-start gap-2 text-xs ${idx === 0 ? 'font-semibold text-amber-700' : ''}">
+                <span class="flex-shrink-0">${idx + 1}.</span>
+                <span>Seq ${pair.seq1_id} ↔ Seq ${pair.seq2_id}: <strong>${pair.distance.toFixed(4)}</strong></span>
+              </div>
+            `).join('');
+            topPairsInfoEl.classList.remove('hidden');
+          }
+          
+          // Render temporal distance chart
+          if (data.temporal_distances && Object.keys(data.temporal_distances).length > 0) {
+            renderTemporalDistances(data.temporal_distances);
+            temporalDistanceSectionEl.classList.remove('hidden');
+          }
+          
+          statusEl.textContent = 'UMAP analysis complete';
+        } else {
+          statusEl.textContent = 'UMAP analysis failed';
+        }
+      } catch (err) {
+        statusEl.textContent = `UMAP error: ${err.message}`;
+      } finally {
+        umapAnalyzeBtn.disabled = false;
+      }
+    });
+
+    // ===== Save/Load System =====
+
+    saveBtn.addEventListener('click', async () => {
+      if (!currentSessionData) {
+        alert('No session to save. Generate sequences first.');
+        return;
+      }
+
+      const name = prompt('Enter a name for this session:');
+      if (!name || !name.trim()) {
+        return;
+      }
+
+      try {
+        const baseUrl = baseUrlEl.value;
+        const response = await fetch(`${baseUrl}/save_session`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: name.trim(),
+            prompt: currentSessionData.prompt,
+            params: currentSessionData.params,
+            sequences: currentSessionData.sequences
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const result = await response.json();
+        alert(`✓ ${result.message}`);
+        statusEl.textContent = `Session saved: ${result.filename}`;
+      } catch (err) {
+        alert(`Failed to save session: ${err.message}`);
+      }
+    });
+
+    loadBtn.addEventListener('click', async () => {
+      try {
+        const baseUrl = baseUrlEl.value;
+        
+        // Fetch list of saved sessions
+        const listResponse = await fetch(`${baseUrl}/list_sessions`);
+        if (!listResponse.ok) {
+          throw new Error(`HTTP ${listResponse.status}`);
+        }
+        
+        const listData = await listResponse.json();
+        if (!listData.sessions || listData.sessions.length === 0) {
+          alert('No saved sessions found.');
+          return;
+        }
+
+        // Build selection dialog
+        const sessionList = listData.sessions.map((s, idx) => 
+          `${idx + 1}. ${s.name} (${new Date(s.timestamp).toLocaleString()})`
+        ).join('\n');
+        
+        const choice = prompt(`Select a session to load (enter number):\n\n${sessionList}`);
+        if (!choice) return;
+        
+        const index = parseInt(choice) - 1;
+        if (isNaN(index) || index < 0 || index >= listData.sessions.length) {
+          alert('Invalid selection.');
+          return;
+        }
+
+        const selectedSession = listData.sessions[index];
+        
+        // Load the selected session
+        const loadResponse = await fetch(`${baseUrl}/load_session/${selectedSession.filename}`);
+        if (!loadResponse.ok) {
+          throw new Error(`HTTP ${loadResponse.status}`);
+        }
+        
+        const sessionData = await loadResponse.json();
+        
+        // Restore UI state
+        promptEl.value = sessionData.prompt;
+        if (sessionData.params) {
+          kEl.value = sessionData.params.k || 10;
+          temperatureEl.value = sessionData.params.temperature || 1.0;
+          topPEl.value = sessionData.params.top_p || 1.0;
+          minPEl.value = sessionData.params.min_p || 0.0;
+          numSeqEl.value = sessionData.params.n || 10;
+          maxLenEl.value = sessionData.params.max_length || 15;
+          umapNeighborsEl.value = sessionData.params.umap_n_neighbors || 5;
+          umapMinDistEl.value = sessionData.params.umap_min_dist || 0.0;
+          umapSpreadEl.value = sessionData.params.umap_spread || 0.5;
+        }
+        
+        // Restore sequences and visualization
+        currentSequences = sessionData.sequences;
+        currentSessionData = {
+          prompt: sessionData.prompt,
+          params: sessionData.params,
+          sequences: sessionData.sequences
+        };
+        
+        // Rebuild visualization
+        const tree = buildTree(sessionData.sequences);
+        const stats = countBranches(tree, sessionData.sequences);
+        
+        const sortedSeqs = [...sessionData.sequences].sort((a, b) => a.id - b.id);
+        const depths = sortedSeqs.map(seq => {
+          if (seq.id === sortedSeqs[0].id) return 0;
+          
+          let maxShared = 0;
+          for (const other of sortedSeqs) {
+            if (other.id >= seq.id) break;
+            if (!other.tokens || !seq.tokens) continue;
+            
+            let shared = 0;
+            for (let i = 0; i < Math.min(other.tokens.length, seq.tokens.length); i++) {
+              if (other.tokens[i].token_id === seq.tokens[i].token_id) shared++;
+              else break;
+            }
+            if (shared > maxShared) maxShared = shared;
+          }
+          
+          return maxShared > 0 ? 1 : 0;
+        });
+        
+        const treeDepth = Math.max(...depths);
+        const uniqueBranches = stats.totalBranches;
+        const maxDepth = stats.byDepth.length;
+        const uniqueTokensPerPos = stats.byDepth.map((count, idx) => count > 0 ? `[pos ${idx}: ${count} choices]` : '').filter(s => s).join(' ');
+        
+        branchStatsEl.innerHTML = `
+          <strong>Loaded session: ${sessionData.name}</strong><br>
+          Generated ${sessionData.sequences.length} sequences (max ${sessionData.params.max_length} tokens each)<br>
+          Total divergence points: <strong>${uniqueBranches}</strong><br>
+          Max depth: <strong>${maxDepth}</strong> tokens | Tree depth: <strong>${treeDepth}</strong><br>
+          ${uniqueTokensPerPos}<br>
+          <span class="text-amber-600">■</span> = token diverges from parent sequence
+        `;
+        
+        branchTreeEl.innerHTML = '';
+        branchTreeEl.appendChild(renderTreeHorizontal(sessionData.sequences));
+        branchVizEl.classList.remove('hidden');
+        
+        // UMAP visualization must be generated separately
+        semanticVizEl.classList.add('hidden');
+        
+        statusEl.textContent = `Loaded session: ${sessionData.name} - Click "Analyze UMAP" to generate semantic map`;
+      } catch (err) {
+        alert(`Failed to load session: ${err.message}`);
+      }
+    });
   </script>
 </body>
 </html>

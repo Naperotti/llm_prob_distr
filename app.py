@@ -1,16 +1,20 @@
 # app.py
 import os
 import torch
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from fastapi.middleware.cors import CORSMiddleware
 import umap
 import numpy as np
+import json
+from datetime import datetime
+from pathlib import Path
 
 
 # ----------- Config -----------
-MODEL_NAME = os.getenv("MODEL_NAME", "gpt2")   # e.g., "meta-llama/Meta-Llama-3-8B"
+MODEL_NAME = os.getenv("MODEL_NAME", "gpt2")   # Smaller model for CPU - much faster!
+# Alternative models (need more RAM/GPU): "Qwen/Qwen2.5-1.5B-Instruct", "meta-llama/Llama-3.2-1B"
 DEVICE = "mps" if torch.backends.mps.is_available() else "cpu"
 DTYPE = torch.float16 if DEVICE == "mps" else None
 
@@ -491,3 +495,287 @@ def sample_n_sequences(req: SampleNSequencesRequest):
         sequences=sequences,
         umap_coords=umap_coords
     )
+
+
+class GenerateUMAPRequest(BaseModel):
+    sequences: list[Sequence]
+    umap_n_neighbors: int = Field(5, ge=2, le=50)
+    umap_min_dist: float = Field(0.0, ge=0.0, le=1.0)
+    umap_spread: float = Field(0.5, ge=0.1, le=3.0)
+
+
+class GenerateUMAPResponse(BaseModel):
+    umap_coords: list[Coordinate2D]
+    max_distance_pair: dict = {}  # {seq1_id, seq2_id, distance, metric}
+    top_distance_pairs: list[dict] = []  # Top N most different pairs
+    temporal_distances: dict = {}  # {position: {mean, max}} distance at each token position
+
+
+@app.post("/generate_umap", response_model=GenerateUMAPResponse)
+def generate_umap(req: GenerateUMAPRequest):
+    """Generate UMAP coordinates for existing sequences (separate from generation)."""
+    if len(req.sequences) < 2:
+        raise HTTPException(status_code=400, detail="Need at least 2 sequences for UMAP")
+    
+    try:
+        embeddings_list = []
+        with torch.no_grad():
+            for seq in req.sequences:
+                # Encode the full sequence text
+                enc = tok(seq.full_text, return_tensors="pt")
+                enc = {kk: vv.to(DEVICE) for kk, vv in enc.items()}
+                
+                # Get the model's hidden states
+                out = model(**enc, output_hidden_states=True)
+                
+                # Use the last token's hidden state as the sequence embedding
+                last_hidden = out.hidden_states[-1]
+                seq_embedding = last_hidden[0, -1, :].cpu().numpy()
+                embeddings_list.append(seq_embedding)
+        
+        embeddings = np.array(embeddings_list)
+        
+        # Find the pair with maximum cosine distance in high-dimensional space
+        # Cosine distance = 1 - cosine_similarity
+        max_dist = -1
+        max_pair = (0, 1)
+        
+        # Normalize embeddings for cosine similarity calculation
+        from numpy.linalg import norm
+        normalized_embeddings = embeddings / norm(embeddings, axis=1, keepdims=True)
+        
+        # Build full distance matrix and collect all pairs
+        n_seqs = len(req.sequences)
+        distance_matrix = np.zeros((n_seqs, n_seqs))
+        all_pairs = []
+        
+        # Calculate pairwise cosine distances
+        for i in range(n_seqs):
+            for j in range(i + 1, n_seqs):
+                # Cosine similarity = dot product of normalized vectors
+                cos_sim = np.dot(normalized_embeddings[i], normalized_embeddings[j])
+                cos_dist = 1.0 - cos_sim  # Convert similarity to distance
+                
+                # Store in matrix (symmetric)
+                distance_matrix[i, j] = cos_dist
+                distance_matrix[j, i] = cos_dist
+                
+                # Track all pairs for top-N
+                all_pairs.append({
+                    "seq1_id": int(req.sequences[i].id),
+                    "seq2_id": int(req.sequences[j].id),
+                    "distance": float(cos_dist),
+                    "seq1_text": req.sequences[i].full_text[:80] + "..." if len(req.sequences[i].full_text) > 80 else req.sequences[i].full_text,
+                    "seq2_text": req.sequences[j].full_text[:80] + "..." if len(req.sequences[j].full_text) > 80 else req.sequences[j].full_text
+                })
+                
+                if cos_dist > max_dist:
+                    max_dist = cos_dist
+                    max_pair = (i, j)
+        
+        # Sort pairs by distance descending and take top 10
+        all_pairs.sort(key=lambda x: x["distance"], reverse=True)
+        top_pairs = all_pairs[:min(10, len(all_pairs))]
+        
+        # Calculate temporal distances: mean and max distance at each token position
+        # OPTIMIZED: Get ALL hidden states at once for each sequence, then extract by position
+        # Only use sequences that have the maximum length to keep consistent comparisons
+        max_seq_len = max(len(seq.tokens) for seq in req.sequences)
+        min_seq_len = max_seq_len  # We'll only use sequences with max length
+        
+        temporal_distances = {}
+        
+        # First pass: Get all hidden states for sequences with maximum length only
+        all_hidden_states = []  # List of (seq_len, hidden_dim) arrays
+        full_length_seqs = []
+        
+        with torch.no_grad():
+            for seq in req.sequences:
+                if len(seq.tokens) == max_seq_len:  # Only include full-length sequences
+                    enc = tok(seq.full_text, return_tensors="pt")
+                    enc = {kk: vv.to(DEVICE) for kk, vv in enc.items()}
+                    out = model(**enc, output_hidden_states=True)
+                    # Get all token positions from last layer: shape (1, seq_len, hidden_dim)
+                    all_tokens_hidden = out.hidden_states[-1][0].cpu().numpy()  # (seq_len, hidden_dim)
+                    all_hidden_states.append(all_tokens_hidden)
+                    full_length_seqs.append(seq)
+        
+        n_seqs = len(all_hidden_states)
+        
+        # Second pass: For each position, extract embeddings and calculate distances
+        # Now we're always comparing the SAME set of sequences across all positions
+        for pos in range(1, max_seq_len + 1):
+            pos_embeddings = []
+            
+            for hidden_states in all_hidden_states:
+                # Extract embedding at position 'pos' (0-indexed, so pos-1)
+                pos_embeddings.append(hidden_states[pos - 1])
+            
+            if len(pos_embeddings) >= 2:
+                pos_embeddings = np.array(pos_embeddings)
+                normalized_pos = pos_embeddings / norm(pos_embeddings, axis=1, keepdims=True)
+                
+                # Calculate all pairwise distances at this position
+                distances_at_pos = []
+                max_dist_at_pos = -1
+                
+                for i in range(len(pos_embeddings)):
+                    for j in range(i + 1, len(pos_embeddings)):
+                        cos_sim = np.dot(normalized_pos[i], normalized_pos[j])
+                        cos_dist = 1.0 - cos_sim
+                        distances_at_pos.append(cos_dist)
+                        if cos_dist > max_dist_at_pos:
+                            max_dist_at_pos = cos_dist
+                
+                temporal_distances[pos] = {
+                    "mean": float(np.mean(distances_at_pos)),
+                    "max": float(max_dist_at_pos),
+                    "n_sequences": n_seqs
+                }
+        
+        max_distance_info = {
+            "seq1_id": int(req.sequences[max_pair[0]].id),
+            "seq2_id": int(req.sequences[max_pair[1]].id),
+            "distance": float(max_dist),
+            "metric": "cosine_distance",
+            "seq1_text": req.sequences[max_pair[0]].full_text[:100] + "..." if len(req.sequences[max_pair[0]].full_text) > 100 else req.sequences[max_pair[0]].full_text,
+            "seq2_text": req.sequences[max_pair[1]].full_text[:100] + "..." if len(req.sequences[max_pair[1]].full_text) > 100 else req.sequences[max_pair[1]].full_text
+        }
+        
+        # Apply UMAP dimensionality reduction
+        n_neighbors = min(req.umap_n_neighbors, len(req.sequences) - 1)
+        reducer = umap.UMAP(
+            n_components=2, 
+            random_state=42, 
+            n_neighbors=n_neighbors, 
+            min_dist=req.umap_min_dist,
+            metric='cosine',
+            spread=req.umap_spread
+        )
+        coords_2d = reducer.fit_transform(embeddings)
+        
+        # Convert to list of coordinates
+        umap_coords = [Coordinate2D(x=float(coords_2d[i, 0]), y=float(coords_2d[i, 1])) for i in range(len(req.sequences))]
+        
+        return GenerateUMAPResponse(
+            umap_coords=umap_coords,
+            max_distance_pair=max_distance_info,
+            top_distance_pairs=top_pairs,
+            temporal_distances=temporal_distances
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"UMAP generation failed: {str(e)}")
+
+
+# ===== Save/Load System =====
+
+SAVED_SESSIONS_DIR = Path("./saved_sessions")
+SAVED_SESSIONS_DIR.mkdir(exist_ok=True)
+
+
+class SaveSessionRequest(BaseModel):
+    name: str = Field(..., min_length=1, description="Session name")
+    prompt: str
+    params: dict
+    sequences: list[Sequence]
+
+
+class SaveSessionResponse(BaseModel):
+    success: bool
+    filename: str
+    message: str
+
+
+class LoadSessionResponse(BaseModel):
+    name: str
+    timestamp: str
+    prompt: str
+    params: dict
+    sequences: list[Sequence]
+
+
+class ListSessionsResponse(BaseModel):
+    sessions: list[dict]  # Each dict has: {name, filename, timestamp}
+
+
+@app.post("/save_session", response_model=SaveSessionResponse)
+def save_session(req: SaveSessionRequest):
+    """Save a complete generation session with all data."""
+    try:
+        timestamp = datetime.now().isoformat()
+        # Sanitize filename
+        safe_name = "".join(c if c.isalnum() or c in (' ', '_', '-') else '_' for c in req.name)
+        filename = f"{safe_name}_{timestamp.replace(':', '-').split('.')[0]}.json"
+        filepath = SAVED_SESSIONS_DIR / filename
+        
+        # Build session data
+        session_data = {
+            "name": req.name,
+            "timestamp": timestamp,
+            "model": MODEL_NAME,
+            "prompt": req.prompt,
+            "params": req.params,
+            "sequences": [seq.dict() for seq in req.sequences]
+        }
+        
+        # Write to file
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(session_data, f, indent=2, ensure_ascii=False)
+        
+        return SaveSessionResponse(
+            success=True,
+            filename=filename,
+            message=f"Session '{req.name}' saved successfully"
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save session: {str(e)}")
+
+
+@app.get("/list_sessions", response_model=ListSessionsResponse)
+def list_sessions():
+    """List all saved sessions."""
+    try:
+        sessions = []
+        for filepath in SAVED_SESSIONS_DIR.glob("*.json"):
+            try:
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                sessions.append({
+                    "name": data.get("name", "Unknown"),
+                    "filename": filepath.name,
+                    "timestamp": data.get("timestamp", "Unknown")
+                })
+            except Exception as e:
+                print(f"Error reading {filepath}: {e}")
+                continue
+        
+        # Sort by timestamp descending (most recent first)
+        sessions.sort(key=lambda s: s["timestamp"], reverse=True)
+        
+        return ListSessionsResponse(sessions=sessions)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list sessions: {str(e)}")
+
+
+@app.get("/load_session/{filename}", response_model=LoadSessionResponse)
+def load_session(filename: str):
+    """Load a saved session by filename."""
+    try:
+        filepath = SAVED_SESSIONS_DIR / filename
+        if not filepath.exists():
+            raise HTTPException(status_code=404, detail=f"Session file not found: {filename}")
+        
+        with open(filepath, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        return LoadSessionResponse(
+            name=data["name"],
+            timestamp=data["timestamp"],
+            prompt=data["prompt"],
+            params=data["params"],
+            sequences=[Sequence(**seq) for seq in data["sequences"]]
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load session: {str(e)}")
