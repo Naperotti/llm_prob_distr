@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LLM Probability Distribution</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 text-slate-900">
+  <div class="w-full min-h-screen p-6 flex flex-col items-stretch">
+    <h1 class="text-2xl font-semibold mb-4">LLM Probability Distribution</h1>
+    <p class="text-sm text-slate-600 mb-6">Generate multiple sequences from a prompt. Hover over tokens to see alternative choices.</p>
+
+    <!-- Generation Controls Form -->
+    <form id="form" class="flex flex-wrap items-end gap-4 bg-white p-4 rounded-xl shadow-sm w-full max-w-full mb-6">
+      <!-- Prompt Input -->
+      <label class="flex flex-col gap-1 min-w-[220px] max-w-xs flex-1">
+        <span class="text-xs font-medium">Prompt</span>
+        <textarea 
+          id="prompt" 
+          class="rounded-lg border border-slate-300 p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm resize-y min-h-[2.2em] max-h-[5em]" 
+          rows="2" 
+          placeholder="Something happens">Something happens</textarea>
+      </label>
+
+      <!-- Parameter Controls -->
+      <div class="flex flex-wrap gap-2 items-end">
+        <label class="flex flex-col gap-1 w-32">
+          <span class="text-xs font-medium" title="Number of different sequences to generate">Sequences</span>
+          <input 
+            id="numSequences" 
+            type="number" 
+            min="1" 
+            max="500" 
+            value="5" 
+            class="rounded-lg border border-slate-300 p-1 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs" />
+        </label>
+        
+        <label class="flex flex-col gap-1 w-28">
+          <span class="text-xs font-medium" title="Number of tokens to generate per sequence">Tokens</span>
+          <input 
+            id="numTokens" 
+            type="number" 
+            min="1" 
+            max="100" 
+            value="10" 
+            class="rounded-lg border border-slate-300 p-1 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs" />
+        </label>
+        
+        <label class="flex flex-col gap-1 w-28">
+          <span class="text-xs font-medium" title="Temperature: <1 = focused, 1 = normal, >1 = random">Temperature</span>
+          <input 
+            id="temperature" 
+            type="number" 
+            min="0.01" 
+            step="0.01" 
+            value="0.5" 
+            class="rounded-lg border border-slate-300 p-1 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs" />
+        </label>
+        
+        <label class="flex flex-col gap-1 w-24">
+          <span class="text-xs font-medium" title="Top-k: Only sample from top k tokens">Top-k</span>
+          <input 
+            id="topK" 
+            type="number" 
+            min="1" 
+            max="200" 
+            value="10" 
+            class="rounded-lg border border-slate-300 p-1 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs" />
+        </label>
+      </div>
+
+      <!-- Generate Button -->
+      <div class="flex items-center gap-2 flex-wrap">
+        <button 
+          id="generateBtn" 
+          class="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 text-sm font-medium" 
+          type="submit">
+          Generate
+        </button>
+        <button 
+          id="saveBtn" 
+          class="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 text-sm font-medium" 
+          type="button">
+          Save Dataset
+        </button>
+        <button 
+          id="loadBtn" 
+          class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-sm font-medium" 
+          type="button">
+          Load Dataset
+        </button>
+        <span id="status" class="text-xs text-slate-500">Ready</span>
+      </div>
+    </form>
+
+    <!-- Generated Sequences Display -->
+    <div id="sequences" class="mt-4 bg-white rounded-xl shadow p-4 w-full hidden">
+      <h2 class="text-lg font-medium mb-4">Generated Sequences</h2>
+      <div id="sequenceList" class="max-h-[70vh] overflow-y-auto pr-2"></div>
+    </div>
+
+    <!-- Hover Tooltip -->
+    <div 
+      id="tooltip" 
+      class="fixed hidden bg-slate-800 text-white text-xs rounded-lg shadow-lg p-3 max-w-sm z-50"
+      style="pointer-events: none;">
+      <div id="tooltipContent"></div>
+    </div>
+  </div>
+
+  <script>
+    // ===== DOM Elements =====
+    const form = document.getElementById('form');
+    const promptEl = document.getElementById('prompt');
+    const numSequencesEl = document.getElementById('numSequences');
+    const numTokensEl = document.getElementById('numTokens');
+    const temperatureEl = document.getElementById('temperature');
+    const topKEl = document.getElementById('topK');
+    const generateBtn = document.getElementById('generateBtn');
+    const saveBtn = document.getElementById('saveBtn');
+    const loadBtn = document.getElementById('loadBtn');
+    const statusEl = document.getElementById('status');
+    const sequencesEl = document.getElementById('sequences');
+    const sequenceListEl = document.getElementById('sequenceList');
+    const tooltipEl = document.getElementById('tooltip');
+    const tooltipContentEl = document.getElementById('tooltipContent');
+
+    // ===== Constants =====
+    const API_BASE = 'http://localhost:8000';
+    
+    // ===== State =====
+    let currentData = null;  // Store generated data for saving
+
+    // ===== Utility Functions =====
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // ===== Event Handlers =====
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await generateSequences();
+    });
+
+    // ===== Main Functions =====
+    async function generateSequences() {
+      const prompt = promptEl.value.trim();
+      if (!prompt) {
+        statusEl.textContent = 'Please enter a prompt';
+        return;
+      }
+
+      const params = {
+        prompt: prompt,
+        num_sequences: parseInt(numSequencesEl.value),
+        num_tokens: parseInt(numTokensEl.value),
+        temperature: parseFloat(temperatureEl.value),
+        top_k: parseInt(topKEl.value)
+      };
+
+      generateBtn.disabled = true;
+      statusEl.textContent = 'Generating...';
+      sequencesEl.classList.add('hidden');
+
+      try {
+        const response = await fetch(`${API_BASE}/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(params)
+        });
+
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        currentData = data;  // Store for saving
+        displaySequences(data);
+        statusEl.textContent = `Generated ${data.sequences.length} sequences`;
+        saveBtn.disabled = false;  // Enable save button
+        
+      } catch (error) {
+        console.error('Generation error:', error);
+        statusEl.textContent = `Error: ${error.message}`;
+      } finally {
+        generateBtn.disabled = false;
+      }
+    }
+
+    function displaySequences(data) {
+      sequenceListEl.innerHTML = '';
+      const sequences = data.sequences;
+      const prompt = data.prompt;
+      
+      // Build hierarchical tree structure
+      const tree = buildHierarchicalTree(sequences);
+      
+      // Render tree recursively
+      renderTree(tree, prompt, 0);
+      
+      sequencesEl.classList.remove('hidden');
+    }
+
+    function buildHierarchicalTree(sequences) {
+      // Create tree nodes
+      const nodes = sequences.map((seq, idx) => ({
+        seq: seq,
+        seqIdx: idx,
+        children: [],
+        parent: null,
+        divergeIdx: -1
+      }));
+      
+      // Find parent for each sequence (first sequence with same prefix)
+      for (let i = 1; i < nodes.length; i++) {
+        const node = nodes[i];
+        
+        // Find the longest matching prefix with previous sequences
+        let bestParent = 0;
+        let bestMatch = 0;
+        
+        for (let j = 0; j < i; j++) {
+          let matchLen = 0;
+          const otherSeq = sequences[j];
+          
+          while (matchLen < node.seq.tokens.length && 
+                 matchLen < otherSeq.tokens.length && 
+                 node.seq.tokens[matchLen] === otherSeq.tokens[matchLen]) {
+            matchLen++;
+          }
+          
+          if (matchLen > bestMatch) {
+            bestMatch = matchLen;
+            bestParent = j;
+          }
+        }
+        
+        // Set parent relationship
+        node.parent = bestParent;
+        node.divergeIdx = bestMatch;
+        nodes[bestParent].children.push(i);
+      }
+      
+      return nodes;
+    }
+
+    function renderTree(nodes, prompt, rootIdx) {
+      const stack = [{nodeIdx: rootIdx, depth: 0}];
+      
+      while (stack.length > 0) {
+        const {nodeIdx, depth} = stack.pop();
+        const node = nodes[nodeIdx];
+        const seq = node.seq;
+        
+        // Create sequence div
+        const seqDiv = document.createElement('div');
+        seqDiv.className = 'font-mono text-sm py-1 hover:bg-slate-50';
+        seqDiv.style.paddingLeft = `${depth * 20}px`;
+        
+        // Add prompt (only for root)
+        if (depth === 0) {
+          const promptSpan = document.createElement('span');
+          promptSpan.className = 'text-slate-600';
+          promptSpan.textContent = prompt;
+          seqDiv.appendChild(promptSpan);
+        } else {
+          // For children, show parent prefix in gray
+          const parentSeq = nodes[node.parent].seq;
+          for (let i = 0; i < node.divergeIdx; i++) {
+            const prefixSpan = document.createElement('span');
+            prefixSpan.className = 'text-slate-400';
+            prefixSpan.textContent = parentSeq.tokens[i];
+            seqDiv.appendChild(prefixSpan);
+          }
+        }
+        
+        // Add tokens
+        seq.tokens.forEach((token, idx) => {
+          const tokenSpan = document.createElement('span');
+          
+          // Highlight divergence token in orange
+          if (depth > 0 && idx === node.divergeIdx) {
+            tokenSpan.className = 'bg-orange-400 text-white px-1 font-bold cursor-pointer hover:bg-orange-500';
+          } else if (depth === 0 || idx >= node.divergeIdx) {
+            // Normal token (visible part)
+            tokenSpan.className = 'cursor-pointer hover:bg-slate-200';
+          } else {
+            // Skip - already shown as parent prefix
+            return;
+          }
+          
+          tokenSpan.textContent = token;
+          tokenSpan.dataset.alternatives = JSON.stringify(seq.alternatives[idx]);
+          
+          tokenSpan.addEventListener('mouseenter', showTooltip);
+          tokenSpan.addEventListener('mouseleave', hideTooltip);
+          tokenSpan.addEventListener('mousemove', updateTooltipPosition);
+          
+          seqDiv.appendChild(tokenSpan);
+        });
+        
+        sequenceListEl.appendChild(seqDiv);
+        
+        // Sort children by divergence index (descending - latest divergence first)
+        const sortedChildren = node.children.slice().sort((a, b) => {
+          return nodes[b].divergeIdx - nodes[a].divergeIdx;
+        });
+        
+        // Add children to stack (in reverse order since stack is LIFO)
+        for (let i = sortedChildren.length - 1; i >= 0; i--) {
+          stack.push({nodeIdx: sortedChildren[i], depth: depth + 1});
+        }
+      }
+    }
+
+    function showTooltip(e) {
+      const alternatives = JSON.parse(e.target.dataset.alternatives);
+      
+      let html = `<div class="font-semibold mb-2">Chosen: ${escapeHtml(alternatives.chosen_token)} (${(alternatives.chosen_probability * 100).toFixed(1)}%)</div>`;
+      html += `<div class="text-xs opacity-75 mb-2">Top alternatives:</div>`;
+      html += `<div class="space-y-1 max-h-48 overflow-y-auto">`;
+      
+      alternatives.top_k_tokens.slice(0, 10).forEach((token, idx) => {
+        const prob = alternatives.top_k_probabilities[idx];
+        const isChosen = token === alternatives.chosen_token;
+        const bgClass = isChosen ? 'bg-indigo-600' : 'bg-slate-600';
+        html += `
+          <div class="flex justify-between items-center gap-3">
+            <span class="font-mono">${escapeHtml(token)}</span>
+            <div class="flex items-center gap-2">
+              <div class="w-16 h-2 bg-slate-700 rounded-full overflow-hidden">
+                <div class="${bgClass} h-full" style="width: ${prob * 100}%"></div>
+              </div>
+              <span class="text-xs opacity-75 w-12 text-right">${(prob * 100).toFixed(1)}%</span>
+            </div>
+          </div>
+        `;
+      });
+      
+      html += `</div>`;
+      tooltipContentEl.innerHTML = html;
+      tooltipEl.classList.remove('hidden');
+      updateTooltipPosition(e);
+    }
+
+    function hideTooltip() {
+      tooltipEl.classList.add('hidden');
+    }
+
+    function updateTooltipPosition(e) {
+      const offset = 15;
+      let x = e.pageX + offset;
+      let y = e.pageY + offset;
+      
+      const tooltipRect = tooltipEl.getBoundingClientRect();
+      if (x + tooltipRect.width > window.innerWidth) {
+        x = e.pageX - tooltipRect.width - offset;
+      }
+      if (y + tooltipRect.height > window.innerHeight) {
+        y = e.pageY - tooltipRect.height - offset;
+      }
+      
+      tooltipEl.style.left = `${x}px`;
+      tooltipEl.style.top = `${y}px`;
+    }
+
+    // ===== Save/Load Functions =====
+    async function saveDataset() {
+      if (!currentData) {
+        statusEl.textContent = 'No data to save. Generate sequences first.';
+        return;
+      }
+
+      try {
+        saveBtn.disabled = true;
+        statusEl.textContent = 'Saving to server...';
+        
+        const response = await fetch(`${API_BASE}/save`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(currentData)
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Save failed: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        statusEl.textContent = `Saved to saved_datasets/${result.filename}`;
+        
+      } catch (error) {
+        console.error('Save error:', error);
+        statusEl.textContent = `Error saving: ${error.message}`;
+      } finally {
+        saveBtn.disabled = false;
+      }
+    }
+
+    async function loadDataset() {
+      try {
+        statusEl.textContent = 'Loading dataset list...';
+        
+        // Fetch list of available datasets
+        const response = await fetch(`${API_BASE}/datasets`);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch datasets: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.datasets.length === 0) {
+          statusEl.textContent = 'No saved datasets found';
+          return;
+        }
+        
+        // Show simple list and let user pick
+        const datasetList = result.datasets
+          .map((d, i) => `${i + 1}. ${d.filename} (${d.size_kb} KB)`)
+          .join('\n');
+        
+        const choice = prompt(`Select dataset number:\n\n${datasetList}`);
+        
+        if (!choice) return;
+        
+        const index = parseInt(choice) - 1;
+        if (index < 0 || index >= result.datasets.length) {
+          statusEl.textContent = 'Invalid selection';
+          return;
+        }
+        
+        const filename = result.datasets[index].filename;
+        statusEl.textContent = `Loading ${filename}...`;
+        
+        // Load the selected dataset
+        const loadResponse = await fetch(`${API_BASE}/datasets/${filename}`);
+        if (!loadResponse.ok) {
+          throw new Error(`Failed to load dataset: ${loadResponse.status}`);
+        }
+        
+        const data = await loadResponse.json();
+        
+        // Validate data structure
+        if (!data.prompt || !data.sequences || !Array.isArray(data.sequences)) {
+          throw new Error('Invalid data format');
+        }
+        
+        // Load the data
+        currentData = data;
+        displaySequences(data);
+        saveBtn.disabled = false;
+        statusEl.textContent = `Loaded ${data.sequences.length} sequences from ${filename}`;
+        
+      } catch (error) {
+        console.error('Load error:', error);
+        statusEl.textContent = `Error loading: ${error.message}`;
+      }
+    }
+
+    // ===== Event Listeners =====
+    saveBtn.addEventListener('click', saveDataset);
+    loadBtn.addEventListener('click', loadDataset);
+    
+    // Disable save button initially
+    saveBtn.disabled = true;
+  </script>
+</body>
+</html>

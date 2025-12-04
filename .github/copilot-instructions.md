@@ -15,7 +15,7 @@ sensitive_files: [".env", "secrets.json"]
 
 ## Short Identity
 - Shell: `Git Bash` on Windows
-- Role: Student working on a course project. Student wants to learn every line of code that is written.
+- Role: Student working on a course project. Student wants to learn every line of code that is written. SO write comment often explaining code and logic. Write the code in a way that is easy to understand for a beginner and write as little amount of code as possible to still achive the goal.
 
 ## Project Goal (one line)
 - Goal: Build a small FastAPI service that returns next-token probabilities from a language model.
