@@ -15,8 +15,12 @@ from config import MODEL_NAME, DEVICE
 print(f"Loading model: {MODEL_NAME}")
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 model = AutoModelForCausalLM.from_pretrained(MODEL_NAME)
+model = model.to(DEVICE)  # Move model to GPU/CPU
 model.eval()  # Set to evaluation mode (no training)
 print(f"Model loaded successfully on {DEVICE}")
+if DEVICE == "cuda":
+    print(f"GPU: {torch.cuda.get_device_name(0)}")
+    print(f"GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1e9:.2f} GB")
 
 # ===== ML Functions =====
 
@@ -40,7 +44,7 @@ def generate_sequences(prompt: str, num_sequences: int, num_tokens: int,
     # Generate each sequence independently
     for seq_id in range(num_sequences):
         # 1. Tokenize the prompt
-        input_ids = tokenizer.encode(prompt, return_tensors="pt")  # Shape: [1, prompt_length]
+        input_ids = tokenizer.encode(prompt, return_tensors="pt").to(DEVICE)  # Shape: [1, prompt_length], move to GPU
         
         # Storage for this sequence's data
         generated_tokens = []      # Token strings
@@ -110,7 +114,7 @@ def generate_sequences(prompt: str, num_sequences: int, num_tokens: int,
             })
             
             # Add the new token to the sequence for next iteration
-            current_ids = torch.cat([current_ids, next_token_id.unsqueeze(0)], dim=1)
+            current_ids = torch.cat([current_ids, next_token_id.unsqueeze(0).to(DEVICE)], dim=1)
         
         # 3. Create full text (prompt + generated tokens)
         full_text = prompt + "".join(generated_tokens)
@@ -147,8 +151,8 @@ def compute_embedding_for_text(text: str) -> np.ndarray:
     Returns:
         numpy array (768,) - one embedding vector
     """
-    # Tokenize and pass through GPT-2
-    input_ids = tokenizer(text, return_tensors="pt")["input_ids"]
+    # Tokenize and pass through model
+    input_ids = tokenizer(text, return_tensors="pt")["input_ids"].to(DEVICE)
     
     with torch.no_grad():
         outputs = model(input_ids, output_hidden_states=True, output_attentions=True)

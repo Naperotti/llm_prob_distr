@@ -5,8 +5,10 @@ from pydantic import BaseModel
 from typing import List, Optional
 
 # ===== Configuration Constants =====
-MODEL_NAME = "gpt2"  # Which model to load
-DEVICE = "cpu"       # Which device to run on (cpu for your machine)
+MODEL_NAME = "Qwen/Qwen2.5-1.5B"  # Which model to load
+# Auto-detect GPU: uses "cuda" if available, otherwise "cpu"
+import torch
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 # ===== Pydantic Models (Request/Response Schemas) =====
 # These define the structure of data coming in and going out of API endpoints
