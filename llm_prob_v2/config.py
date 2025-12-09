@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 
 # ===== Configuration Constants =====
-MODEL_NAME = "Qwen/Qwen2.5-7B-Instruct"  # Which model to load
+MODEL_NAME = "Qwen/Qwen2.5-1.5B"  # Which model to load
 # Auto-detect GPU: uses "cuda" if available, otherwise "cpu"
 import torch
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
