@@ -14,7 +14,8 @@ from config import MODEL_NAME, DEVICE
 
 print(f"Loading model: {MODEL_NAME}")
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-model = AutoModelForCausalLM.from_pretrained(MODEL_NAME)
+# Load model with eager attention to enable attention weight extraction
+model = AutoModelForCausalLM.from_pretrained(MODEL_NAME, attn_implementation="eager")
 model = model.to(DEVICE)  # Move model to GPU/CPU
 model.eval()  # Set to evaluation mode (no training)
 print(f"Model loaded successfully on {DEVICE}")
@@ -118,6 +119,7 @@ def generate_sequences(prompt: str, num_sequences: int, num_tokens: int,
         
         # 3. Create full text (prompt + generated tokens)
         full_text = prompt + "".join(generated_tokens)
+        generated_only = "".join(generated_tokens)  # Text without prompt
         
         # 4. Compute semantic embedding for this sequence (for UMAP analysis)
         # We do this once here so we don't need to re-run the model later
@@ -126,7 +128,7 @@ def generate_sequences(prompt: str, num_sequences: int, num_tokens: int,
         # 5. Package this sequence's data
         sequence_data = {
             "sequence_id": seq_id,
-            "text": full_text,
+            "text": generated_only,  # Only generated tokens (no prompt)
             "tokens": generated_tokens,
             "token_ids": generated_ids,
             "probabilities": chosen_probabilities,
@@ -140,26 +142,27 @@ def generate_sequences(prompt: str, num_sequences: int, num_tokens: int,
 
 def compute_embedding_for_text(text: str) -> np.ndarray:
     """
-    Compute a 768-dim semantic embedding for a single text using GPT-2.
+    Compute a semantic embedding using attention-weighted pooling.
     
-    Uses attention-weighted pooling: tokens that GPT-2 considers important
+    Uses attention-weighted pooling: tokens that the model considers important
     (based on attention weights) contribute more to the final embedding.
     
     Args:
         text: The text to embed
     
     Returns:
-        numpy array (768,) - one embedding vector
+        numpy array with embedding dimension matching the model
     """
     # Tokenize and pass through model
     input_ids = tokenizer(text, return_tensors="pt")["input_ids"].to(DEVICE)
     
     with torch.no_grad():
+        # Get attention weights (model already loaded with eager attention)
         outputs = model(input_ids, output_hidden_states=True, output_attentions=True)
-        hidden_states = outputs.hidden_states[-1]  # Last layer: (1, num_tokens, 768)
+        hidden_states = outputs.hidden_states[-1]  # Last layer: (1, num_tokens, hidden_dim)
         
         # Get attention weights from last layer
-        attention = outputs.attentions[-1]  # (1, 12_heads, num_tokens, num_tokens)
+        attention = outputs.attentions[-1]  # (1, num_heads, num_tokens, num_tokens)
         
         # Average across heads, sum to get importance per token, normalize
         token_weights = attention.mean(dim=1).sum(dim=1)  # (1, num_tokens)
@@ -168,7 +171,7 @@ def compute_embedding_for_text(text: str) -> np.ndarray:
         # Weighted sum: multiply each token's vector by its weight
         embedding = (hidden_states * token_weights.unsqueeze(-1)).sum(dim=1)
     
-    return embedding.squeeze(0).cpu().numpy()  # Shape: (768,)
+    return embedding.squeeze(0).cpu().numpy()  # Shape: (hidden_dim,)
 
 
 def analyze_sequences_umap(sequences_data, n_neighbors=15, min_dist=0.1):

@@ -2,9 +2,10 @@
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from config import MODEL_NAME, DEVICE, GenerateRequest, GenerateResponse, SequenceData
-from ml_utils import generate_sequences
+from ml_utils import generate_sequences, analyze_sequences_umap
+from visualizations import create_umap_scatter
 from pathlib import Path
 import json
 from datetime import datetime
@@ -151,5 +152,23 @@ def delete_dataset(filename: str):
     filepath.unlink()
     
     return {"message": f"Dataset '{filename}' deleted successfully"}
+
+# ===== Visualization Endpoints =====
+
+@app.post("/visualize/umap")
+def visualize_umap(data: GenerateResponse):
+    """
+    Create UMAP visualization from generated sequences.
+    Returns Plotly JSON for frontend rendering.
+    """
+    # Run UMAP analysis
+    umap_points = analyze_sequences_umap([seq.dict() for seq in data.sequences])
+    
+    # Create Plotly visualization
+    plotly_json = create_umap_scatter(umap_points)
+    
+    return Response(content=plotly_json, media_type="application/json")
+
+
 
 # ===== Run with: uvicorn app:app --reload =====
